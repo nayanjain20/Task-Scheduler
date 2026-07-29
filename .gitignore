@@ -1,0 +1,12 @@
+# Editor lock files
+*.LCK*
+*~
+
+# Java build output
+bin/
+*.class
+
+# VS Code Java
+.classpath
+.project
+.settings/
