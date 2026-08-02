@@ -2,6 +2,9 @@
 *.LCK*
 *~
 
+# Log files
+*.log
+
 # Java build output
 bin/
 *.class
