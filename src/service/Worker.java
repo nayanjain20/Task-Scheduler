@@ -6,6 +6,10 @@ import model.ScheduledExecution;
 import model.ScheduledExecution.ExecutionStatus;
 import util.Logger;
 
+/**
+ * Worker thread that blocks on the shared execution queue.
+ * Picks up tasks one at a time and calls task.execute().
+ */
 public class Worker implements Runnable {
     Queue<ScheduledExecution> executionQueue;
     int workerId;
@@ -30,7 +34,7 @@ public class Worker implements Runnable {
                     execution = executionQueue.poll();
                     execution.setWorker(this);        
                     execution.getTaskSchedule().getTask().execute();
-                    execution.setExecutionStatus(ExecutionStatus.COMPLETE);
+                    execution.setExecutionStatus(ExecutionStatus.COMPLETED);
                     Logger.log("[WORKER-" + workerId + "] Executing: " + execution.getTaskSchedule().getTask().getTaskName() + " Remaining tasks: " + executionQueue.size());
                 }
             } catch (InterruptedException e) {

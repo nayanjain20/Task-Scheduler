@@ -3,6 +3,10 @@ package model;
 import java.util.LinkedList;
 import java.util.List;
 
+/**
+ * Abstract base for all task types. Holds identity, status, schedule,
+ * and execution history. Subclasses implement execute().
+ */
 public abstract class Task {
     final int taskId;
     final String taskName;

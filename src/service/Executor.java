@@ -6,6 +6,10 @@ import java.util.Queue;
 import model.ScheduledExecution;
 import util.Logger;
 
+/**
+ * Dispatches due tasks to a fixed pool of Worker threads.
+ * Uses a shared LinkedList queue with notify() to wake idle workers.
+ */
 public class Executor{
 
     Queue<ScheduledExecution> executionQueue;

@@ -4,12 +4,16 @@ import java.time.Instant;
 
 import service.Worker;
 
+/**
+ * Represents a single scheduled run of a task at a specific time.
+ * Tracks its execution status and which worker handled it.
+ */
 public class ScheduledExecution{
     TaskSchedule taskSchedule;
     Instant executionTime;
     Worker worker;
     ExecutionStatus executionStatus;
-    public enum ExecutionStatus {COMPLETE,SKIPPED,PENDING, IN_QUEUE};
+    public enum ExecutionStatus {COMPLETED,SKIPPED,PENDING, IN_QUEUE};
 
     public ScheduledExecution(TaskSchedule taskSchedule, Instant executionTime) {
         this.taskSchedule = taskSchedule;

@@ -33,7 +33,7 @@ class SchedulerProcess implements Runnable{
             // System.out.println("In Loop");
             try{
                 scheduler.waitUntilNextExecution();
-                scheduler.proceedScheduledExecution();
+                scheduler.processScheduledExecutions();
             }catch(InterruptedException e){
                 Thread.currentThread().interrupt();
                 System.out.println("[SCHEDULER] Interrupted: " + e.getMessage());

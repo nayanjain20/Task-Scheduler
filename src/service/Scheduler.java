@@ -12,6 +12,11 @@ import model.ScheduledExecution.ExecutionStatus;
 import model.Task.TaskStatus;
 import util.Logger;
 
+/**
+ * Core scheduler that maintains a priority queue of upcoming executions.
+ * Wakes up precisely when the next task is due using timed wait().
+ * Thread-safe via synchronized methods and wait/notifyAll.
+ */
 public class Scheduler {
 
     Instant nextWakeup;
@@ -37,7 +42,7 @@ public class Scheduler {
         Logger.log("[SCHEDULER] Added: " + scheduledExecution.getTaskSchedule().getTask().getTaskName() + " | at: " + scheduledExecution.getExecutionTime());
     }
 
-    public synchronized void proceedScheduledExecution(){
+    public synchronized void processScheduledExecutions(){
         Instant currentInstant = Instant.now();
 
         while (scheduledExecutions.size()>0 && scheduledExecutions.peek().getExecutionTime().compareTo(currentInstant)<=0){

@@ -12,6 +12,10 @@ import service.Scheduler;
 import service.Worker;
 import util.Logger;
 
+/**
+ * Interactive CLI client for managing tasks in the scheduler.
+ * Supports adding, cancelling, pausing, and resuming tasks.
+ */
 public class Client implements Runnable {
 
     private final Scheduler scheduler;
@@ -51,19 +55,19 @@ public class Client implements Runnable {
                 case "2":
                     printTaskSummary();
                     System.out.print("Enter Task Id to Cancel: ");
-                    cancelTaks(Integer.parseInt(scanner.nextLine()));
+                    cancelTask(Integer.parseInt(scanner.nextLine()));
                     break;
 
                 case "3":
                     printTaskSummary();
                     System.out.print("Enter Task Id to Pause: ");
-                    pauseTaks(Integer.parseInt(scanner.nextLine()));
+                    pauseTask(Integer.parseInt(scanner.nextLine()));
                     break;
 
                 case "4":
                     printTaskSummary();
                     System.out.print("Enter Task Id to Resume: ");
-                    resumeTaks(Integer.parseInt(scanner.nextLine()));
+                    resumeTask(Integer.parseInt(scanner.nextLine()));
                     break;
 
                 case "5":
@@ -195,23 +199,23 @@ public class Client implements Runnable {
         scheduler.addScheduledExecution(execution);
     }
 
-    public void cancelTaks(int taskId) {
+    public void cancelTask(int taskId) {
         Task task = taskMap.get(taskId);
         if (task != null) {
             task.setTaskStatus(TaskStatus.DEACTIVE);
-            System.out.println("Task Cancelled.");
+            System.out.println("[CLIENT] Task cancelled: " + task.getTaskName());
         }
     }
 
-    public void pauseTaks(int taskId) {
+    public void pauseTask(int taskId) {
         Task task = taskMap.get(taskId);
         if (task != null) {
             task.setTaskStatus(TaskStatus.PAUSE);
-            System.out.println("Task Paused.");
+            System.out.println("[CLIENT] Task paused: " + task.getTaskName());
         }
     }
 
-    public void resumeTaks(int taskId) {
+    public void resumeTask(int taskId) {
 
         Task task = taskMap.get(taskId);
 
@@ -232,7 +236,6 @@ public class Client implements Runnable {
         task.getScheduledExecutions().add(execution);
 
         scheduler.addScheduledExecution(execution);
-
-        System.out.println("Task Resumed.");
+        System.out.println("[CLIENT] Task resumed: " + task.getTaskName());
     }
 }
