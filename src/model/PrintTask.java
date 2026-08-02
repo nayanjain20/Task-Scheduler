@@ -2,18 +2,19 @@ package model;
 
 import java.time.Instant;
 
-public class PrintTask implements Task{
+import util.Logger;
 
-    String printJob;
+public class PrintTask extends Task{
 
-    public PrintTask(String printJob){
-        this.printJob = printJob;
+    public PrintTask(String taskName, int taskId){
+        super(taskId, taskName, TaskStatus.ACTIVE);
     }
     void print(){
-        System.out.println("[" + Instant.now() + "] "+printJob);
+        Logger.log("[" + Instant.now() + "] "+taskName);
     }
     @Override
     public void execute() {
         print();  
     }
+    
 }

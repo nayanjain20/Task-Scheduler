@@ -7,6 +7,10 @@ import java.util.List;
 import java.util.PriorityQueue;
 
 import model.ScheduledExecution;
+import model.Task;
+import model.ScheduledExecution.ExecutionStatus;
+import model.Task.TaskStatus;
+import util.Logger;
 
 public class Scheduler {
 
@@ -15,8 +19,9 @@ public class Scheduler {
     List<ScheduledExecution> executedList;
     Executor executor;
 
-    public Scheduler(Executor executor
-    ){
+
+  
+    public Scheduler(Executor executor ){
         nextWakeup = Instant.MAX;
         scheduledExecutions = new PriorityQueue<>((a,b)->a.getExecutionTime().compareTo(b.getExecutionTime()));
         executedList = new ArrayList<>();
@@ -25,35 +30,36 @@ public class Scheduler {
 
     public synchronized void addScheduledExecution(ScheduledExecution scheduledExecution){
         scheduledExecutions.add(scheduledExecution);
-        // scheduledExecution.gettTaskSchedule().getTask().execute();
         if(scheduledExecutions.size()>0 &&  nextWakeup.isAfter(scheduledExecutions.peek().getExecutionTime())){
             nextWakeup = scheduledExecutions.peek().getExecutionTime();        
         }
         notifyAll();
-        System.out.println("[SCHEDULER] Added: " + scheduledExecution.gettTaskSchedule().getTask().getClass().getSimpleName() + " | at: " + scheduledExecution.getExecutionTime());
+        Logger.log("[SCHEDULER] Added: " + scheduledExecution.getTaskSchedule().getTask().getTaskName() + " | at: " + scheduledExecution.getExecutionTime());
     }
 
-    public synchronized void proceedScheduedExecution(){
+    public synchronized void proceedScheduledExecution(){
         Instant currentInstant = Instant.now();
-        System.out.println("[SCHEDULER] Proceeding executions at: " + currentInstant);
 
         while (scheduledExecutions.size()>0 && scheduledExecutions.peek().getExecutionTime().compareTo(currentInstant)<=0){
             ScheduledExecution execution = scheduledExecutions.poll();
-            
-            
-            // executedList.add(execution);
-            executor.addScheduledExecution(execution);
-                  
-            ScheduledExecution nextScheduledExecution = execution.getNextScheduledExecution();
-            if(nextScheduledExecution!=null){
-                addScheduledExecution(nextScheduledExecution);
-            }
-        }
-        
-        if(scheduledExecutions.size()>0){
-            nextWakeup = scheduledExecutions.peek().getExecutionTime();        
-        }else{
-            nextWakeup = Instant.MAX;
+            Task task = execution.getTaskSchedule().getTask();
+
+            if(task.getTaskStatus().equals(TaskStatus.ACTIVE)){
+                execution.setExecutionStatus(ExecutionStatus.IN_QUEUE);
+                executor.addScheduledExecution(execution);    
+                ScheduledExecution nextScheduledExecution = execution.getNextScheduledExecution();
+                if(nextScheduledExecution!=null){
+                    addScheduledExecution(nextScheduledExecution);
+                    task.getScheduledExecutions().add(nextScheduledExecution);
+                }else{
+                    task.setTaskStatus(TaskStatus.COMPLETED);
+                }
+            }else{
+                execution.setExecutionStatus(ExecutionStatus.SKIPPED);
+                Logger.log("[SKIPPING] task: " + task.getTaskId() + " - " + task.getTaskName() + " | status: " + task.getTaskStatus());
+                notifyAll();
+                return;
+            }             
         }
         
     }
