@@ -13,7 +13,7 @@ public class ScheduledExecution{
     Instant executionTime;
     Worker worker;
     ExecutionStatus executionStatus;
-    public enum ExecutionStatus {COMPLETED,SKIPPED,PENDING, IN_QUEUE};
+    public enum ExecutionStatus {COMPLETED,SKIPPED,PENDING, IN_QUEUE, FAILED};
 
     public ScheduledExecution(TaskSchedule taskSchedule, Instant executionTime) {
         this.taskSchedule = taskSchedule;

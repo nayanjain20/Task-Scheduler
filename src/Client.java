@@ -9,6 +9,7 @@ import model.Task;
 import model.Task.TaskStatus;
 import model.TaskSchedule;
 import service.Scheduler;
+import service.TaskFactory;
 import service.Worker;
 import util.Logger;
 
@@ -118,29 +119,96 @@ public class Client implements Runnable {
 
     private void addTaskMenu() {
 
+        System.out.println("\nSelect Task Type:");
+        System.out.println("1. Print Task");
+        System.out.println("2. Write Task");
+        System.out.println("3. Delete Task");
+        System.out.print("> ");
+
+        int taskType = Integer.parseInt(scanner.nextLine());
+
         System.out.print("Task Name: ");
-        String name = scanner.nextLine();
+        String taskName = scanner.nextLine();
 
         System.out.print("Start After (seconds): ");
-        int delay = Integer.parseInt(scanner.nextLine());
+        int delaySeconds = Integer.parseInt(scanner.nextLine());
 
         System.out.print("Recurring (y/n): ");
         boolean recurring = scanner.nextLine().equalsIgnoreCase("y");
 
-        int interval = 0;
+        int intervalSeconds = 0;
         if (recurring) {
             System.out.print("Interval (seconds): ");
-            interval = Integer.parseInt(scanner.nextLine());
+            intervalSeconds = Integer.parseInt(scanner.nextLine());
         }
 
-        addPrintTask(name, currentTaskId++, delay, recurring, interval);
+        Task task = null;
+
+        switch (taskType) {
+
+            case 1: {
+                task = TaskFactory.creatPrintTask(currentTaskId++, taskName);
+                break;
+            }
+
+            case 2: {
+                System.out.print("Target File Path: ");
+                String filePath = scanner.nextLine();
+
+                System.out.print("Message: ");
+                String message = scanner.nextLine();
+
+                task = TaskFactory.createWriteTask(
+                        currentTaskId++,
+                        taskName,
+                        filePath,
+                        message);
+                break;
+            }
+
+            case 3: {
+                System.out.print("Target File Path: ");
+                String filePath = scanner.nextLine();
+
+                task = TaskFactory.creatDeleteTask(
+                        currentTaskId++,
+                        taskName,
+                        filePath);
+                break;
+            }
+
+            default:
+                System.out.println("Invalid task type.");
+                return;
+        }
+
+        scheduleTask(
+                task,
+                delaySeconds,
+                recurring,
+                intervalSeconds);
+
+        System.out.println("[CLIENT] Task added successfully.");
     }
 
     private void loadDemoTasks() {
-        addPrintTask("Restart Server", currentTaskId++, 3, false, 0);
-        addPrintTask("Send Email", currentTaskId++, 5, false, 0);
-        addPrintTask("Heartbeat", currentTaskId++, 2, true, 5);
-        addPrintTask("Print Logs", currentTaskId++, 4, true, 2);
+        loadWriteDemoTasks();
+        loadDeleteDemoTasks();
+        loadPrintDemoTasks();
+        
+    }
+    private void loadWriteDemoTasks() {
+        Task writeTaskA = TaskFactory.createWriteTask(currentTaskId++, "Write A", "temp/a.txt", "Hi");
+        scheduleTask(writeTaskA, 5, true, 1);
+        
+    }
+    private void loadDeleteDemoTasks() {
+        Task deleteTaskA = TaskFactory.creatDeleteTask(currentTaskId++, "Delete A", "temp/a.txt");
+        scheduleTask(deleteTaskA, 10, true, 5);
+    }
+    private void loadPrintDemoTasks() {
+        Task prinTask = TaskFactory.creatPrintTask(currentTaskId++, "Heart beat");
+        scheduleTask(prinTask,0,  true, 5);
     }
 
     public void listTask(boolean showExecutions) {
@@ -172,13 +240,11 @@ public class Client implements Runnable {
         }
     }
 
-    public void addPrintTask(String taskName,
-                             int taskId,
+    public void scheduleTask(Task task,
                              int delaySeconds,
                              boolean recurring,
                              int intervalSeconds) {
 
-        Task task = new PrintTask(taskName, taskId);
 
         Instant startTime = Instant.now().plusSeconds(delaySeconds);
 
@@ -194,7 +260,7 @@ public class Client implements Runnable {
         task.setTaskSchedule(schedule);
         task.getScheduledExecutions().add(execution);
 
-        taskMap.put(taskId, task);
+        taskMap.put(task.getTaskId(), task);
 
         scheduler.addScheduledExecution(execution);
     }

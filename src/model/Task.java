@@ -13,6 +13,7 @@ public abstract class Task {
     TaskStatus taskStatus;
     TaskSchedule taskSchedule;
     List<ScheduledExecution> scheduledExecutions;
+    public static final int MAX_RETRY = 3;
 
     public enum TaskStatus {ACTIVE,DEACTIVE,PAUSE, COMPLETED}
 
