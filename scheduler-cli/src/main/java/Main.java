@@ -2,14 +2,13 @@
 import service.Executor;
 import service.Scheduler;
 
-public class Main{
-
-
+public class Main {
 
     static Scheduler scheduler;
     static Executor executor;
-    public static void main(String args[]){
-        
+
+    public static void main(String args[]) {
+
         executor = new Executor();
         scheduler = new Scheduler(executor);
         Runnable clientRunnable = new Client(scheduler);
@@ -21,20 +20,22 @@ public class Main{
     }
 }
 
-class SchedulerProcess implements Runnable{
+class SchedulerProcess implements Runnable {
     Scheduler scheduler;
-    SchedulerProcess(Scheduler scheduler){
+
+    SchedulerProcess(Scheduler scheduler) {
         this.scheduler = scheduler;
     }
+
     @Override
     public void run() {
         System.out.println("Scheduler started\n");
-        while(true){
+        while (true) {
             // System.out.println("In Loop");
-            try{
+            try {
                 scheduler.waitUntilNextExecution();
                 scheduler.processScheduledExecutions();
-            }catch(InterruptedException e){
+            } catch (InterruptedException e) {
                 Thread.currentThread().interrupt();
                 System.out.println("[SCHEDULER] Interrupted: " + e.getMessage());
             }

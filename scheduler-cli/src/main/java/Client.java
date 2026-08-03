@@ -1,15 +1,15 @@
+
 import java.time.Instant;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Scanner;
 
-import model.PrintTask;
 import model.ScheduledExecution;
 import model.Task;
 import model.Task.TaskStatus;
 import model.TaskSchedule;
 import service.Scheduler;
-import service.TaskFactory;
+import factory.TaskFactory;
 import service.Worker;
 import util.Logger;
 
@@ -195,20 +195,23 @@ public class Client implements Runnable {
         loadWriteDemoTasks();
         loadDeleteDemoTasks();
         loadPrintDemoTasks();
-        
+
     }
+
     private void loadWriteDemoTasks() {
         Task writeTaskA = TaskFactory.createWriteTask(currentTaskId++, "Write A", "temp/a.txt", "Hi");
         scheduleTask(writeTaskA, 5, true, 1);
-        
+
     }
+
     private void loadDeleteDemoTasks() {
         Task deleteTaskA = TaskFactory.creatDeleteTask(currentTaskId++, "Delete A", "temp/a.txt");
         scheduleTask(deleteTaskA, 10, true, 5);
     }
+
     private void loadPrintDemoTasks() {
         Task prinTask = TaskFactory.creatPrintTask(currentTaskId++, "Heart beat");
-        scheduleTask(prinTask,0,  true, 5);
+        scheduleTask(prinTask, 0, true, 5);
     }
 
     public void listTask(boolean showExecutions) {
@@ -236,15 +239,14 @@ public class Client implements Runnable {
             String workerId = (worker == null) ? "PENDING" : String.valueOf(worker.getWorkerId());
 
             System.out.println("  " + execution.getExecutionTime()
-                    + " | Worker: " + workerId +" | Status: "+execution.getExecutionStatus());
+                    + " | Worker: " + workerId + " | Status: " + execution.getExecutionStatus());
         }
     }
 
     public void scheduleTask(Task task,
-                             int delaySeconds,
-                             boolean recurring,
-                             int intervalSeconds) {
-
+            int delaySeconds,
+            boolean recurring,
+            int intervalSeconds) {
 
         Instant startTime = Instant.now().plusSeconds(delaySeconds);
 
@@ -254,8 +256,7 @@ public class Client implements Runnable {
                 recurring,
                 intervalSeconds);
 
-        ScheduledExecution execution =
-                new ScheduledExecution(schedule, startTime);
+        ScheduledExecution execution = new ScheduledExecution(schedule, startTime);
 
         task.setTaskSchedule(schedule);
         task.getScheduledExecutions().add(execution);
@@ -296,8 +297,7 @@ public class Client implements Runnable {
             executionTime = task.getTaskSchedule().getStartTime();
         }
 
-        ScheduledExecution execution =
-                new ScheduledExecution(task.getTaskSchedule(), executionTime);
+        ScheduledExecution execution = new ScheduledExecution(task.getTaskSchedule(), executionTime);
 
         task.getScheduledExecutions().add(execution);
 

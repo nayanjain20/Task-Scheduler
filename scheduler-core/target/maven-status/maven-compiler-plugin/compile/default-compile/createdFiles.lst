@@ -1,0 +1,14 @@
+model\Task.class
+model\Task$TaskStatus.class
+service\Worker.class
+service\Scheduler.class
+service\TaskFactory.class
+model\DeleteTask.class
+service\Executor.class
+util\Logger.class
+model\WriteTask.class
+model\ScheduledExecution.class
+model\ScheduledExecution$ExecutionStatus.class
+model\TaskSchedule.class
+factory\TaskFactory.class
+model\PrintTask.class
