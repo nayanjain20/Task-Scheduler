@@ -1,58 +1,64 @@
 # Task Scheduler
 
-A multi-threaded task scheduler in Java — supports one-time and recurring task execution with a thread pool executor.
+A learning project that implements a multi-threaded task scheduler in Java. It supports one-time and recurring tasks, a manually managed worker pool, pluggable persistence contracts, an interactive CLI, and an early Spring Boot API.
 
----
+## Modules
 
-## Flow
+| Module | Responsibility |
+| --- | --- |
+| `scheduler-core` | Domain models, scheduling logic, worker execution, and persistence interfaces |
+| `scheduler-cli` | Interactive terminal client and in-memory implementations of the persistence interfaces |
+| `scheduler-api` | Spring Boot HTTP entry point and request/response DTOs |
+
+Each module has its own README with its internal structure and behavior.
+
+## Architecture
 
 ```mermaid
-flowchart TD
-    Client[ClientProcess] -->|addScheduledExecution| Scheduler
-    Scheduler -->|notifyAll| SchedulerProcess
-    SchedulerProcess -->|proceedScheduledExecution| Scheduler
-    Scheduler -->|poll due tasks| Executor
-    Executor -->|notify worker| Worker["Worker (x10)"]
-    Worker -->|task.execute| Task
+flowchart LR
+    CLI[scheduler-cli] --> Core[scheduler-core]
+    API[scheduler-api] --> Core
+    CLI --> Memory[(In-memory stores)]
+    Core --> Ports[Store interfaces]
+    Memory -. implements .-> Ports
 ```
 
----
+The core module does not choose a database or storage technology. Applications create implementations of `TaskStore`, `TaskScheduleStore`, and `TaskExecutionStore`, then inject them into the scheduler and executor.
 
-## Components
+## Execution Flow
 
-| Class                | Role                                                              |
-| -------------------- | ----------------------------------------------------------------- |
-| `Scheduler`          | Priority queue of upcoming executions; wakes up at the right time |
-| `SchedulerProcess`   | Thread that triggers `proceedScheduledExecution` when due         |
-| `Executor`           | Dispatches due tasks to a pool of Worker threads                  |
-| `Worker`             | Waits on shared queue, picks up and runs tasks                    |
-| `ClientProcess`      | Simulates adding tasks at runtime                                 |
-| `TaskSchedule`       | Holds task + start time + recurrence config                       |
-| `ScheduledExecution` | A concrete execution instance with a timestamp                    |
+1. A client creates a `Task` and its `TaskSchedule`.
+2. A `TaskExecution` is added to the scheduler's time-ordered queue.
+3. The scheduler waits until the earliest execution is due.
+4. Due executions are passed to the executor queue.
+5. A worker loads the task from `TaskStore`, runs it, and records the result through `TaskExecutionStore`.
+6. For a recurring schedule, the scheduler creates the next execution using the configured interval.
 
----
+## Project Structure
 
-## Multithreading Concepts
+```text
+task-scheduler/
+|-- scheduler-core/   # Scheduling engine and storage contracts
+|-- scheduler-cli/    # CLI application and in-memory stores
+|-- scheduler-api/    # Spring Boot API scaffold
+`-- pom.xml            # Parent Maven reactor
+```
 
-### Used here
+## Build
 
-| Concept                              | Where                                                                       |
-| ------------------------------------ | --------------------------------------------------------------------------- |
-| `synchronized` methods/blocks        | `Scheduler`, `Executor` — protect shared queues                             |
-| `wait()` / `notifyAll()`             | Scheduler sleeps until next task is due; workers sleep until queue has work |
-| Timed `wait(millis)`                 | Scheduler sleeps exactly until the next execution time                      |
-| Manual thread pool                   | `Executor` spawns N `Worker` threads sharing one queue                      |
-| `Runnable` + `Thread`                | `SchedulerProcess`, `ClientProcess`, `Worker`                               |
-| `Thread.currentThread().interrupt()` | Restores interrupt flag on `InterruptedException`                           |
+Requirements:
 
-### Related — good to know
+- JDK 21
+- Maven 3.9 or newer
 
-| Concept                       | What it does                                                                              |
-| ----------------------------- | ----------------------------------------------------------------------------------------- |
-| `BlockingQueue`               | Built-in thread-safe queue with blocking `take()` — replaces manual wait/notify in Worker |
-| `ReentrantLock` / `Condition` | More flexible alternative to `synchronized` + `wait/notify`                               |
-| `ScheduledExecutorService`    | Java built-in that does exactly what this project does — good reference                   |
-| `volatile`                    | Ensures variable visibility across threads without full sync                              |
-| `AtomicInteger`               | Lock-free thread-safe counter                                                             |
-| `CountDownLatch`              | Wait for N threads to finish before proceeding                                            |
-| `CyclicBarrier`               | Sync point where N threads all wait for each other                                        |
+Build and test all modules from the repository root:
+
+```bash
+mvn clean test
+```
+
+The project currently has no automated test sources, so this command validates dependency resolution and compilation for all modules.
+
+## Current Status
+
+The CLI is the complete runnable composition of the scheduler. The API currently contains the Spring Boot entry point, health endpoint, task DTOs, and a placeholder task endpoint. It still needs store implementations and Spring configuration for the core services before it can run the scheduling flow independently.
