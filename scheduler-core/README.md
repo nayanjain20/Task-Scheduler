@@ -64,10 +64,10 @@ The worker threads are daemon threads. They do not keep the JVM alive after all 
 
 The `store` package defines three ports:
 
-| Interface | Stores |
-| --- | --- |
-| `TaskStore` | Task definitions and task status |
-| `TaskScheduleStore` | Start time and recurrence configuration |
+| Interface            | Stores                                  |
+| -------------------- | --------------------------------------- |
+| `TaskStore`          | Task definitions and task status        |
+| `TaskScheduleStore`  | Start time and recurrence configuration |
 | `TaskExecutionStore` | Individual execution history and status |
 
 The core module only calls these interfaces. An outer module can implement them with in-memory collections, files, JDBC, or another database without changing the scheduling engine.

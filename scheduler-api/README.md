@@ -15,10 +15,10 @@ The package name `controler` reflects the current source layout.
 
 ## Current Endpoints
 
-| Method | Path | Current behavior |
-| --- | --- | --- |
-| `GET` | `/health` | Returns a simple API status message |
-| `POST` | `/tasks` | Accepts a task request and currently returns a placeholder response |
+| Method | Path      | Current behavior                                                    |
+| ------ | --------- | ------------------------------------------------------------------- |
+| `GET`  | `/health` | Returns a simple API status message                                 |
+| `POST` | `/tasks`  | Accepts a task request and currently returns a placeholder response |
 
 `POST /tasks` does not yet persist or schedule the submitted task.
 

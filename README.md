@@ -4,11 +4,11 @@ A learning project that implements a multi-threaded task scheduler in Java. It s
 
 ## Modules
 
-| Module | Responsibility |
-| --- | --- |
-| `scheduler-core` | Domain models, scheduling logic, worker execution, and persistence interfaces |
-| `scheduler-cli` | Interactive terminal client and in-memory implementations of the persistence interfaces |
-| `scheduler-api` | Spring Boot HTTP entry point and request/response DTOs |
+| Module           | Responsibility                                                                          |
+| ---------------- | --------------------------------------------------------------------------------------- |
+| `scheduler-core` | Domain models, scheduling logic, worker execution, and persistence interfaces           |
+| `scheduler-cli`  | Interactive terminal client and in-memory implementations of the persistence interfaces |
+| `scheduler-api`  | Spring Boot HTTP entry point and request/response DTOs                                  |
 
 Each module has its own README with its internal structure and behavior.
 

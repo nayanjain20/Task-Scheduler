@@ -12,10 +12,10 @@
 
 It injects those stores into a five-worker `Executor`, a `Scheduler`, and the interactive `Client`. The application then starts two top-level threads:
 
-| Thread | Purpose |
-| --- | --- |
-| Client thread | Reads menu input and updates tasks and schedules |
-| Scheduler thread | Waits for due executions and dispatches them |
+| Thread           | Purpose                                          |
+| ---------------- | ------------------------------------------------ |
+| Client thread    | Reads menu input and updates tasks and schedules |
+| Scheduler thread | Waits for due executions and dispatches them     |
 
 The scheduler thread is a daemon. Selecting **Exit** ends the client thread, after which the JVM can stop the scheduler and worker daemon threads.
 
