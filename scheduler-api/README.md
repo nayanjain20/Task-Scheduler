@@ -1,26 +1,26 @@
 # Scheduler API
 
-`scheduler-api` is the Spring Boot HTTP entry point for the task scheduler. It depends on `scheduler-core` so that HTTP requests can eventually create tasks and submit executions to the same engine used by the CLI.
+`scheduler-api` is the Spring Boot HTTP entry point for the task scheduler. It creates tasks and reads scheduler state through the same core service used by the CLI.
 
 ## Package Structure
 
 ```text
 com.nayan.scheduler
 |-- SchedulerApiApplication.java  # Spring Boot entry point
-|-- controler/                    # HTTP controller
-`-- dto/                          # API request and response models
+|-- config/                       # Store and engine composition
+|-- controller/                   # HTTP controller
+|-- dto/                          # API request and response models
+`-- service/                      # DTO-to-core mapping
 ```
-
-The package name `controler` reflects the current source layout.
 
 ## Current Endpoints
 
-| Method | Path      | Current behavior                                                    |
-| ------ | --------- | ------------------------------------------------------------------- |
-| `GET`  | `/health` | Returns a simple API status message                                 |
-| `POST` | `/tasks`  | Accepts a task request and currently returns a placeholder response |
-
-`POST /tasks` does not yet persist or schedule the submitted task.
+| Method | Path                         | Current behavior                              |
+| ------ | ---------------------------- | --------------------------------------------- |
+| `GET`  | `/health`                    | Returns a simple API status message           |
+| `POST` | `/tasks`                     | Creates and schedules a task                  |
+| `GET`  | `/tasks`                     | Returns all tasks                             |
+| `GET`  | `/tasks/{taskId}/executions` | Returns execution history for the given task  |
 
 ## Request Model
 
@@ -28,22 +28,16 @@ The package name `controler` reflects the current source layout.
 
 - `type` selects `PRINT`, `WRITE`, or `DELETE`.
 - `taskName` identifies the task.
-- `schedule` contains the requested start time.
+- `schedule` contains the start time, recurrence flag, and interval in seconds.
 - `payload` contains the optional message and file path used by concrete task types.
 
 `CreateTaskResponse` currently contains a task ID and status string.
 
 ## Core Integration
 
-`SchedulerController` declares a dependency on the core `Scheduler`. To make the API independently runnable, the Spring application still needs a composition configuration that provides:
+`StoreConfiguration` creates one shared set of in-memory stores. `EngineConfiguration` creates and starts `TaskSchedulerService` with those stores. `SchedulerApiService` is injected with that shared service and maps API DTOs into core `Task` and `TaskSchedule` objects.
 
-1. Implementations of `TaskStore`, `TaskScheduleStore`, and `TaskExecutionStore`.
-2. An `Executor` configured with those stores and a worker count.
-3. A `Scheduler` configured with the executor and stores.
-4. A background scheduling loop equivalent to the CLI's `SchedulerProcess`.
-5. Controller logic that converts DTOs into core tasks, schedules, and executions.
-
-Those pieces are intentionally not documented as existing behavior because they are not implemented in the current module.
+Because persistence is in memory, API state is lost when the process stops. A database-backed implementation can replace the store beans without changing the controller or scheduling engine.
 
 ## Build
 
@@ -53,4 +47,4 @@ Compile the API and its core dependency from the repository root:
 mvn -pl scheduler-api -am package
 ```
 
-The module compiles, but starting the Spring context requires a `Scheduler` bean. Once the composition configuration is added, the Spring Boot Maven plugin can run the application.
+The VS Code launch configuration named `SchedulerApiApplication` starts the API from the editor.

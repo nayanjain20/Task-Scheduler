@@ -5,39 +5,28 @@ import java.util.List;
 import java.util.Scanner;
 import java.util.UUID;
 
+import com.nayan.scheduler.core.engine.Worker;
 import com.nayan.scheduler.core.factory.TaskFactory;
 import com.nayan.scheduler.core.model.TaskExecution;
 import com.nayan.scheduler.core.model.Task;
-import com.nayan.scheduler.core.model.Task.TaskStatus;
+import com.nayan.scheduler.core.service.TaskSchedulerService;
 import com.nayan.scheduler.core.model.TaskSchedule;
-import com.nayan.scheduler.core.service.Scheduler;
-import com.nayan.scheduler.core.service.Worker;
-import com.nayan.scheduler.core.store.TaskExecutionStore;
-import com.nayan.scheduler.core.store.TaskScheduleStore;
-import com.nayan.scheduler.core.store.TaskStore;
+
 import com.nayan.scheduler.core.util.Logger;
 
 /**
  * Interactive CLI client for managing tasks in the scheduler.
  * Supports adding, cancelling, pausing, and resuming tasks.
  */
-public class Client implements Runnable {
+public class Client {
 
-    private final Scheduler scheduler;
     private final Scanner scanner = new Scanner(System.in);
-    private TaskStore taskStore;
-    private TaskExecutionStore taskExecutionStore;
-    private TaskScheduleStore taskScheduleStore;
+    private TaskSchedulerService taskSchedulerService;
 
-    public Client(Scheduler scheduler, TaskStore taskStore, TaskScheduleStore taskScheduleStore,
-            TaskExecutionStore taskExecutionStore) {
-        this.scheduler = scheduler;
-        this.taskStore = taskStore;
-        this.taskScheduleStore = taskScheduleStore;
-        this.taskExecutionStore = taskExecutionStore;
+    public Client(TaskSchedulerService taskSchedulerService) {
+        this.taskSchedulerService = taskSchedulerService;
     }
 
-    @Override
     public void run() {
 
         Logger.initialize();
@@ -121,7 +110,7 @@ public class Client implements Runnable {
 
     private void printTaskSummary() {
         System.out.println("\nAvailable Tasks:");
-        List<Task> tasks = taskStore.getAllTasks();
+        List<Task> tasks = taskSchedulerService.getAllTasks();
         for (Task task : tasks) {
             System.out.printf("%-38s %-30s %-10s%n",
                     task.getTaskId(),
@@ -213,29 +202,26 @@ public class Client implements Runnable {
 
     private void loadWriteDemoTasks() {
         Task writeTaskA = TaskFactory.createWriteTask("Write A", "temp/a.txt", "Hi");
-        taskStore.addTask(writeTaskA);
         scheduleTask(writeTaskA, 5, true, 1);
 
     }
 
     private void loadDeleteDemoTasks() {
         Task deleteTaskA = TaskFactory.createDeleteTask("Delete A", "temp/a.txt");
-        taskStore.addTask(deleteTaskA);
         scheduleTask(deleteTaskA, 10, true, 5);
     }
 
     private void loadPrintDemoTasks() {
         Task prinTask = TaskFactory.createPrintTask("Heart beat");
-        taskStore.addTask(prinTask);
         scheduleTask(prinTask, 0, true, 5);
+        taskSchedulerService.createTaskAndSchedule(prinTask, null);
         Task oneTimePrintTask = TaskFactory.createPrintTask("One time task [Hello]");
-        taskStore.addTask(oneTimePrintTask);
         scheduleTask(oneTimePrintTask, 0, false, 10);
     }
 
     public void listTask(boolean showExecutions) {
         System.out.println("\n=========== TASKS ===========");
-        List<Task> tasks = taskStore.getAllTasks();
+        List<Task> tasks = taskSchedulerService.getAllTasks();
         for (Task task : tasks) {
             printTask(task);
             if (showExecutions) {
@@ -254,7 +240,7 @@ public class Client implements Runnable {
 
     public void listTaskExecutions(Task task) {
         System.out.println("Executions:");
-        List<TaskExecution> executions = taskExecutionStore.getTaskExecutionsForTask(task.getTaskId());
+        List<TaskExecution> executions = taskSchedulerService.getAllTaskExecutionsForTask(task.getTaskId());
         for (TaskExecution execution : executions) {
             Worker worker = execution.getWorker();
             String workerId = (worker == null) ? "PENDING" : String.valueOf(worker.getWorkerId());
@@ -276,54 +262,24 @@ public class Client implements Runnable {
                 startTime,
                 recurring,
                 intervalSeconds);
-        taskScheduleStore.addTaskSchedule(schedule);
         task.setTaskScheduleId(schedule.getTaskScheduleId());
-        taskStore.updateTask(task);
-
-        TaskExecution execution = new TaskExecution(task.getTaskId(), schedule.getTaskScheduleId(), startTime);
-
-        scheduler.addScheduledExecution(execution);
+        taskSchedulerService.createTaskAndSchedule(task, schedule);
     }
 
     public void cancelTask(UUID taskId) {
-        Task task = taskStore.getTask(taskId);
-        if (task != null) {
-            task.setTaskStatus(TaskStatus.DEACTIVE);
-            taskStore.updateTask(task);
-            System.out.println("[CLIENT] Task cancelled: " + task.getTaskName());
-        }
+        taskSchedulerService.cancelTask(taskId);
     }
 
     public void pauseTask(UUID taskId) {
-        Task task = taskStore.getTask(taskId);
-        if (task != null) {
-            task.setTaskStatus(TaskStatus.PAUSE);
-            taskStore.updateTask(task);
-            System.out.println("[CLIENT] Task paused: " + task.getTaskName());
-        }
+        taskSchedulerService.pauseTask(taskId);
     }
 
     public void resumeTask(UUID taskId) {
 
-        Task task = taskStore.getTask(taskId);
-
-        if (task == null)
-            return;
-
-        task.setTaskStatus(TaskStatus.ACTIVE);
-        taskStore.updateTask(task);
-
-        Instant taskStartTime = taskScheduleStore.getTaskSchedule(task.getTaskScheduleId()).getStartTime();
-
-        Instant executionTime = Instant.now();
-        if (executionTime.isBefore(taskStartTime)) {
-            return;
+        if (taskSchedulerService.resumeTask(taskId)) {
+            System.out.println("[CLIENT] Task resumed: ");
+        } else {
+            System.out.println("Not resumed");
         }
-
-        TaskExecution execution = new TaskExecution(task.getTaskId(), task.getTaskScheduleId(),
-                executionTime);
-
-        scheduler.addScheduledExecution(execution);
-        System.out.println("[CLIENT] Task resumed: " + task.getTaskName());
     }
 }

@@ -13,7 +13,7 @@ public abstract class Task {
     UUID taskScheduleId;
 
     public enum TaskStatus {
-        ACTIVE, DEACTIVE, PAUSE, COMPLETED
+        ACTIVE, CANCEL, PAUSE, COMPLETED
     }
 
     public Task(String taskName, TaskStatus taskStatus) {

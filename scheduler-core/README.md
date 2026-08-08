@@ -7,9 +7,10 @@
 ```text
 com.nayan.scheduler.core
 |-- factory/   # Creates concrete task types
+|-- engine/    # Scheduler, executor, and workers
 |-- model/     # Tasks, schedules, and execution records
-|-- service/   # Scheduler, executor, and workers
-|-- store/     # Persistence contracts implemented by an outer module
+|-- service/   # Shared task scheduling use cases
+|-- store/     # Persistence contracts and in-memory implementations
 `-- util/      # Console logging helper
 ```
 
@@ -60,6 +61,10 @@ When an execution becomes due:
 
 The worker threads are daemon threads. They do not keep the JVM alive after all normal application threads have ended.
 
+## Application Service
+
+`TaskSchedulerService` is the shared entry point used by the CLI and API. It creates and starts the engine, stores tasks and schedules, and exposes operations to create, cancel, pause, resume, and query tasks. Keeping these use cases in core prevents each application module from rebuilding the orchestration flow.
+
 ## Persistence Contracts
 
 The `store` package defines three ports:
@@ -70,16 +75,15 @@ The `store` package defines three ports:
 | `TaskScheduleStore`  | Start time and recurrence configuration |
 | `TaskExecutionStore` | Individual execution history and status |
 
-The core module only calls these interfaces. An outer module can implement them with in-memory collections, files, JDBC, or another database without changing the scheduling engine.
+The `store.inmemory` package provides collection-backed implementations used by the current CLI and API. An outer module can replace them with files, JDBC, or another database without changing the scheduling engine.
 
 ## Using the Core
 
 An application composes the engine in this order:
 
 1. Create implementations of all three store interfaces.
-2. Create an `Executor` with a worker count, task store, and execution store.
-3. Create a `Scheduler` with the executor and all stores.
-4. Run a loop that calls `waitUntilNextExecution()` followed by `processScheduledExecutions()`.
-5. Create tasks, schedules, and initial executions through the application boundary.
+2. Construct `TaskSchedulerService` with those stores.
+3. Call `startScheduler()` once during application startup.
+4. Use the service to create tasks and manage their state.
 
-The CLI module is the current reference composition.
+The CLI and API modules provide plain Java and Spring examples of this composition.

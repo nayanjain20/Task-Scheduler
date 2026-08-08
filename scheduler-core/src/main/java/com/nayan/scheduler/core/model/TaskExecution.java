@@ -3,7 +3,7 @@ package com.nayan.scheduler.core.model;
 import java.time.Instant;
 import java.util.UUID;
 
-import com.nayan.scheduler.core.service.Worker;
+import com.nayan.scheduler.core.engine.Worker;
 
 /**
  * Represents a single scheduled run of a task at a specific time.

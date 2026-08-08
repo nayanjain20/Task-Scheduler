@@ -1,21 +1,21 @@
 # Scheduler CLI
 
-`scheduler-cli` is the runnable terminal application. It composes the core scheduling engine with in-memory stores and provides commands for creating and managing tasks.
+`scheduler-cli` is the runnable terminal application. It composes the shared core scheduling service with in-memory stores and provides commands for creating and managing tasks.
 
 ## Composition
 
-`Main` creates one instance of each in-memory store:
+`Main` creates one instance of each in-memory store from `scheduler-core`:
 
 - `TaskIMStore`
 - `TaskScheduleIMStore`
 - `TaskExecutionIMStore`
 
-It injects those stores into a five-worker `Executor`, a `Scheduler`, and the interactive `Client`. The application then starts two top-level threads:
+It injects those stores into `TaskSchedulerService`, starts the scheduler, and passes the service to the interactive `Client`.
 
-| Thread           | Purpose                                          |
-| ---------------- | ------------------------------------------------ |
-| Client thread    | Reads menu input and updates tasks and schedules |
-| Scheduler thread | Waits for due executions and dispatches them     |
+| Thread           | Purpose                                               |
+| ---------------- | ----------------------------------------------------- |
+| Client thread    | Reads menu input and calls the shared service          |
+| Scheduler thread | Waits for due executions and dispatches them to workers |
 
 The scheduler thread is a daemon. Selecting **Exit** ends the client thread, after which the JVM can stop the scheduler and worker daemon threads.
 
@@ -50,15 +50,15 @@ The scheduler records the execution immediately, even though a worker does not r
 
 ## Task State Changes
 
-- **Cancel** marks the task `DEACTIVE`. Future queued executions are skipped.
+- **Cancel** marks the task `CANCEL`. Pending execution records are discarded.
 - **Pause** marks the task `PAUSE`. Future queued executions are skipped.
-- **Resume** marks the task active and schedules a new execution at the current time when the original start time has passed.
+- **Resume** schedules a paused task again.
 
 The scheduler queue and execution history are not deleted when a task changes state. This keeps the history visible in the list-with-executions view.
 
 ## In-Memory Persistence
 
-The classes in `com.nayan.scheduler.cli.store` implement the core store interfaces with Java collections. Their data exists only for the lifetime of the process and is lost when the CLI exits.
+The classes in `com.nayan.scheduler.core.store.inmemory` implement the core store interfaces with Java collections. Their data exists only for the lifetime of the process and is lost when the CLI exits.
 
 These adapters demonstrate why the interfaces live in `scheduler-core`: another application can provide database-backed adapters while reusing the same engine.
 

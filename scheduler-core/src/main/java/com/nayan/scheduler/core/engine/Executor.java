@@ -1,4 +1,4 @@
-package com.nayan.scheduler.core.service;
+package com.nayan.scheduler.core.engine;
 
 import java.util.LinkedList;
 import java.util.Queue;

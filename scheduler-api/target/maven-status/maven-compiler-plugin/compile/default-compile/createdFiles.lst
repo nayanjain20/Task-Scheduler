@@ -1,7 +1,10 @@
 com\nayan\scheduler\dto\CreateTaskResponse.class
+com\nayan\scheduler\controller\SchedulerController.class
 com\nayan\scheduler\dto\TaskPayload.class
 com\nayan\scheduler\dto\ScheduleRequest.class
+com\nayan\scheduler\service\SchedulerService.class
 com\nayan\scheduler\dto\CreateTaskRequest.class
-com\nayan\scheduler\controler\SchedulerController.class
+com\nayan\scheduler\config\EngineConfiguration.class
 com\nayan\scheduler\dto\TaskType.class
 com\nayan\scheduler\SchedulerApiApplication.class
+com\nayan\scheduler\config\StoreConfiguration.class

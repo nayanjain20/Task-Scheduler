@@ -12,4 +12,6 @@ public interface TaskExecutionStore {
 
     public boolean updateTaskExecution(TaskExecution taskExecution);
 
+    public boolean discardExecutionsForTask(UUID taskId);
+
 }
