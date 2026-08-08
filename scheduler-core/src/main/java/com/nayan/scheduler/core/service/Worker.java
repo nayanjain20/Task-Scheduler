@@ -1,30 +1,39 @@
-package service;
+package com.nayan.scheduler.core.service;
 
 import java.util.Queue;
 
-import model.ScheduledExecution;
-import model.ScheduledExecution.ExecutionStatus;
-import util.Logger;
+import com.nayan.scheduler.core.model.Task;
+import com.nayan.scheduler.core.model.TaskExecution;
+import com.nayan.scheduler.core.model.TaskExecution.ExecutionStatus;
+import com.nayan.scheduler.core.store.TaskExecutionStore;
+import com.nayan.scheduler.core.store.TaskStore;
+import com.nayan.scheduler.core.util.Logger;
 
 /**
  * Worker thread that blocks on the shared execution queue.
  * Picks up tasks one at a time and calls task.execute().
  */
 public class Worker implements Runnable {
-    Queue<ScheduledExecution> executionQueue;
+    Queue<TaskExecution> executionQueue;
     int workerId;
     public static final int MAX_RETRY = 3;
 
-    Worker(Queue<ScheduledExecution> executionQueue, int workerId) {
+    TaskStore taskStore;
+    TaskExecutionStore taskExecutionStore;
+
+    Worker(Queue<TaskExecution> executionQueue, int workerId, TaskStore taskStore,
+            TaskExecutionStore taskExecutionStore) {
         this.executionQueue = executionQueue;
         this.workerId = workerId;
+        this.taskStore = taskStore;
+        this.taskExecutionStore = taskExecutionStore;
     }
 
     @Override
     public void run() {
 
         while (true) {
-            ScheduledExecution execution = null;
+            TaskExecution execution = null;
 
             try {
                 synchronized (executionQueue) {
@@ -35,14 +44,16 @@ public class Worker implements Runnable {
                     execution.setWorker(this);
                 }
             } catch (InterruptedException e) {
-                e.printStackTrace();
+                Thread.currentThread().interrupt();
+                return;
             }
             if (execution != null) {
 
                 int retry = MAX_RETRY;
+                Task task = taskStore.getTask(execution.getTaskId());
                 while (retry > 0) {
                     try {
-                        execution.getTaskSchedule().getTask().execute();
+                        task.execute();
                         break;
                     } catch (Exception e) {
                         retry -= 1;
@@ -50,13 +61,15 @@ public class Worker implements Runnable {
                 }
                 if (retry == 0) {
                     execution.setExecutionStatus(ExecutionStatus.FAILED);
+                    taskExecutionStore.updateTaskExecution(execution);
                     Logger.log("[WORKER-" + workerId + "] Executing: "
-                            + execution.getTaskSchedule().getTask().getTaskName() + " Remaining tasks: "
+                            + task.getTaskName() + " Remaining tasks: "
                             + executionQueue.size());
                 } else {
                     execution.setExecutionStatus(ExecutionStatus.COMPLETED);
+                    taskExecutionStore.updateTaskExecution(execution);
                     Logger.log("[WORKER-" + workerId + "] Executing: "
-                            + execution.getTaskSchedule().getTask().getTaskName() + " Remaining tasks: "
+                            + task.getTaskName() + " Remaining tasks: "
                             + executionQueue.size());
                 }
             }

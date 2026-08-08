@@ -1,6 +1,13 @@
+package com.nayan.scheduler.cli;
 
-import service.Executor;
-import service.Scheduler;
+import com.nayan.scheduler.cli.store.TaskExecutionIMStore;
+import com.nayan.scheduler.cli.store.TaskIMStore;
+import com.nayan.scheduler.cli.store.TaskScheduleIMStore;
+import com.nayan.scheduler.core.service.Executor;
+import com.nayan.scheduler.core.service.Scheduler;
+import com.nayan.scheduler.core.store.TaskExecutionStore;
+import com.nayan.scheduler.core.store.TaskScheduleStore;
+import com.nayan.scheduler.core.store.TaskStore;
 
 public class Main {
 
@@ -9,12 +16,16 @@ public class Main {
 
     public static void main(String args[]) {
 
-        executor = new Executor();
-        scheduler = new Scheduler(executor);
-        Runnable clientRunnable = new Client(scheduler);
+        TaskStore taskStore = new TaskIMStore();
+        TaskScheduleStore taskScheduleStore = new TaskScheduleIMStore();
+        TaskExecutionStore taskExecutionStore = new TaskExecutionIMStore();
+        executor = new Executor(5, taskStore, taskExecutionStore);
+        scheduler = new Scheduler(executor, taskStore, taskScheduleStore, taskExecutionStore);
+        Runnable clientRunnable = new Client(scheduler, taskStore, taskScheduleStore, taskExecutionStore);
         Runnable schedulerRunnable = new SchedulerProcess(scheduler);
         Thread clientThread = new Thread(clientRunnable);
         Thread schedulerThread = new Thread(schedulerRunnable);
+        schedulerThread.setDaemon(true);
         clientThread.start();
         schedulerThread.start();
     }

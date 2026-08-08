@@ -1,17 +1,21 @@
+package com.nayan.scheduler.cli;
 
 import java.time.Instant;
-import java.util.HashMap;
-import java.util.Map;
+import java.util.List;
 import java.util.Scanner;
+import java.util.UUID;
 
-import model.ScheduledExecution;
-import model.Task;
-import model.Task.TaskStatus;
-import model.TaskSchedule;
-import service.Scheduler;
-import factory.TaskFactory;
-import service.Worker;
-import util.Logger;
+import com.nayan.scheduler.core.factory.TaskFactory;
+import com.nayan.scheduler.core.model.TaskExecution;
+import com.nayan.scheduler.core.model.Task;
+import com.nayan.scheduler.core.model.Task.TaskStatus;
+import com.nayan.scheduler.core.model.TaskSchedule;
+import com.nayan.scheduler.core.service.Scheduler;
+import com.nayan.scheduler.core.service.Worker;
+import com.nayan.scheduler.core.store.TaskExecutionStore;
+import com.nayan.scheduler.core.store.TaskScheduleStore;
+import com.nayan.scheduler.core.store.TaskStore;
+import com.nayan.scheduler.core.util.Logger;
 
 /**
  * Interactive CLI client for managing tasks in the scheduler.
@@ -20,13 +24,17 @@ import util.Logger;
 public class Client implements Runnable {
 
     private final Scheduler scheduler;
-    private final Map<Integer, Task> taskMap = new HashMap<>();
     private final Scanner scanner = new Scanner(System.in);
+    private TaskStore taskStore;
+    private TaskExecutionStore taskExecutionStore;
+    private TaskScheduleStore taskScheduleStore;
 
-    private int currentTaskId = 0;
-
-    public Client(Scheduler scheduler) {
+    public Client(Scheduler scheduler, TaskStore taskStore, TaskScheduleStore taskScheduleStore,
+            TaskExecutionStore taskExecutionStore) {
         this.scheduler = scheduler;
+        this.taskStore = taskStore;
+        this.taskScheduleStore = taskScheduleStore;
+        this.taskExecutionStore = taskExecutionStore;
     }
 
     @Override
@@ -46,6 +54,7 @@ public class Client implements Runnable {
             printMenu();
 
             String option = scanner.nextLine();
+            UUID taskId;
 
             switch (option) {
 
@@ -56,19 +65,22 @@ public class Client implements Runnable {
                 case "2":
                     printTaskSummary();
                     System.out.print("Enter Task Id to Cancel: ");
-                    cancelTask(Integer.parseInt(scanner.nextLine()));
+                    taskId = UUID.fromString(scanner.nextLine());
+                    cancelTask(taskId);
                     break;
 
                 case "3":
                     printTaskSummary();
                     System.out.print("Enter Task Id to Pause: ");
-                    pauseTask(Integer.parseInt(scanner.nextLine()));
+                    taskId = UUID.fromString(scanner.nextLine());
+                    pauseTask(taskId);
                     break;
 
                 case "4":
                     printTaskSummary();
                     System.out.print("Enter Task Id to Resume: ");
-                    resumeTask(Integer.parseInt(scanner.nextLine()));
+                    taskId = UUID.fromString(scanner.nextLine());
+                    resumeTask(taskId);
                     break;
 
                 case "5":
@@ -109,8 +121,9 @@ public class Client implements Runnable {
 
     private void printTaskSummary() {
         System.out.println("\nAvailable Tasks:");
-        for (Task task : taskMap.values()) {
-            System.out.printf("[%d] %-30s %-10s%n",
+        List<Task> tasks = taskStore.getAllTasks();
+        for (Task task : tasks) {
+            System.out.printf("%-38s %-30s %-10s%n",
                     task.getTaskId(),
                     task.getTaskName(),
                     task.getTaskStatus());
@@ -147,7 +160,7 @@ public class Client implements Runnable {
         switch (taskType) {
 
             case 1: {
-                task = TaskFactory.creatPrintTask(currentTaskId++, taskName);
+                task = TaskFactory.createPrintTask(taskName);
                 break;
             }
 
@@ -159,7 +172,7 @@ public class Client implements Runnable {
                 String message = scanner.nextLine();
 
                 task = TaskFactory.createWriteTask(
-                        currentTaskId++,
+
                         taskName,
                         filePath,
                         message);
@@ -170,8 +183,8 @@ public class Client implements Runnable {
                 System.out.print("Target File Path: ");
                 String filePath = scanner.nextLine();
 
-                task = TaskFactory.creatDeleteTask(
-                        currentTaskId++,
+                task = TaskFactory.createDeleteTask(
+
                         taskName,
                         filePath);
                 break;
@@ -195,28 +208,35 @@ public class Client implements Runnable {
         loadWriteDemoTasks();
         loadDeleteDemoTasks();
         loadPrintDemoTasks();
-
+        printTaskSummary();
     }
 
     private void loadWriteDemoTasks() {
-        Task writeTaskA = TaskFactory.createWriteTask(currentTaskId++, "Write A", "temp/a.txt", "Hi");
+        Task writeTaskA = TaskFactory.createWriteTask("Write A", "temp/a.txt", "Hi");
+        taskStore.addTask(writeTaskA);
         scheduleTask(writeTaskA, 5, true, 1);
 
     }
 
     private void loadDeleteDemoTasks() {
-        Task deleteTaskA = TaskFactory.creatDeleteTask(currentTaskId++, "Delete A", "temp/a.txt");
+        Task deleteTaskA = TaskFactory.createDeleteTask("Delete A", "temp/a.txt");
+        taskStore.addTask(deleteTaskA);
         scheduleTask(deleteTaskA, 10, true, 5);
     }
 
     private void loadPrintDemoTasks() {
-        Task prinTask = TaskFactory.creatPrintTask(currentTaskId++, "Heart beat");
+        Task prinTask = TaskFactory.createPrintTask("Heart beat");
+        taskStore.addTask(prinTask);
         scheduleTask(prinTask, 0, true, 5);
+        Task oneTimePrintTask = TaskFactory.createPrintTask("One time task [Hello]");
+        taskStore.addTask(oneTimePrintTask);
+        scheduleTask(oneTimePrintTask, 0, false, 10);
     }
 
     public void listTask(boolean showExecutions) {
         System.out.println("\n=========== TASKS ===========");
-        for (Task task : taskMap.values()) {
+        List<Task> tasks = taskStore.getAllTasks();
+        for (Task task : tasks) {
             printTask(task);
             if (showExecutions) {
                 listTaskExecutions(task);
@@ -228,13 +248,14 @@ public class Client implements Runnable {
     public void printTask(Task task) {
         System.out.println("[" + task.getTaskId() + "] "
                 + task.getTaskName()
-                + " | Recurring: " + task.getTaskSchedule().isRecurring()
+                // + " | Recurring: " + Schedule
                 + " | Status: " + task.getTaskStatus());
     }
 
     public void listTaskExecutions(Task task) {
         System.out.println("Executions:");
-        for (ScheduledExecution execution : task.getScheduledExecutions()) {
+        List<TaskExecution> executions = taskExecutionStore.getTaskExecutionsForTask(task.getTaskId());
+        for (TaskExecution execution : executions) {
             Worker worker = execution.getWorker();
             String workerId = (worker == null) ? "PENDING" : String.valueOf(worker.getWorkerId());
 
@@ -251,55 +272,56 @@ public class Client implements Runnable {
         Instant startTime = Instant.now().plusSeconds(delaySeconds);
 
         TaskSchedule schedule = new TaskSchedule(
-                task,
+                task.getTaskId(),
                 startTime,
                 recurring,
                 intervalSeconds);
+        taskScheduleStore.addTaskSchedule(schedule);
+        task.setTaskScheduleId(schedule.getTaskScheduleId());
+        taskStore.updateTask(task);
 
-        ScheduledExecution execution = new ScheduledExecution(schedule, startTime);
-
-        task.setTaskSchedule(schedule);
-        task.getScheduledExecutions().add(execution);
-
-        taskMap.put(task.getTaskId(), task);
+        TaskExecution execution = new TaskExecution(task.getTaskId(), schedule.getTaskScheduleId(), startTime);
 
         scheduler.addScheduledExecution(execution);
     }
 
-    public void cancelTask(int taskId) {
-        Task task = taskMap.get(taskId);
+    public void cancelTask(UUID taskId) {
+        Task task = taskStore.getTask(taskId);
         if (task != null) {
             task.setTaskStatus(TaskStatus.DEACTIVE);
+            taskStore.updateTask(task);
             System.out.println("[CLIENT] Task cancelled: " + task.getTaskName());
         }
     }
 
-    public void pauseTask(int taskId) {
-        Task task = taskMap.get(taskId);
+    public void pauseTask(UUID taskId) {
+        Task task = taskStore.getTask(taskId);
         if (task != null) {
             task.setTaskStatus(TaskStatus.PAUSE);
+            taskStore.updateTask(task);
             System.out.println("[CLIENT] Task paused: " + task.getTaskName());
         }
     }
 
-    public void resumeTask(int taskId) {
+    public void resumeTask(UUID taskId) {
 
-        Task task = taskMap.get(taskId);
+        Task task = taskStore.getTask(taskId);
 
         if (task == null)
             return;
 
         task.setTaskStatus(TaskStatus.ACTIVE);
+        taskStore.updateTask(task);
+
+        Instant taskStartTime = taskScheduleStore.getTaskSchedule(task.getTaskScheduleId()).getStartTime();
 
         Instant executionTime = Instant.now();
-
-        if (executionTime.isBefore(task.getTaskSchedule().getStartTime())) {
-            executionTime = task.getTaskSchedule().getStartTime();
+        if (executionTime.isBefore(taskStartTime)) {
+            return;
         }
 
-        ScheduledExecution execution = new ScheduledExecution(task.getTaskSchedule(), executionTime);
-
-        task.getScheduledExecutions().add(execution);
+        TaskExecution execution = new TaskExecution(task.getTaskId(), task.getTaskScheduleId(),
+                executionTime);
 
         scheduler.addScheduledExecution(execution);
         System.out.println("[CLIENT] Task resumed: " + task.getTaskName());

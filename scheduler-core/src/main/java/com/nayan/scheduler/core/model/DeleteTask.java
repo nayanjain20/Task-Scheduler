@@ -1,28 +1,29 @@
-package model;
+package com.nayan.scheduler.core.model;
 
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 
-import util.Logger;
+import com.nayan.scheduler.core.util.Logger;
 
 public class DeleteTask extends Task {
 
     String filePath;
 
-    public DeleteTask(int taskId, String taskName, String filePath){
-        super(taskId, taskName, TaskStatus.ACTIVE);
+    public DeleteTask(String taskName, String filePath) {
+        super(taskName, TaskStatus.ACTIVE);
         this.filePath = filePath;
     }
-    public void deleteFile(){
-        try{
+
+    public void deleteFile() {
+        try {
             boolean delete = Files.deleteIfExists(Path.of(filePath));
-            if(delete){
+            if (delete) {
                 Logger.log("[CleanupTask] Deleted: " + filePath);
-            }else{
+            } else {
                 Logger.log("[CleanupTask] File not found: " + filePath);
             }
-        }catch(IOException e){
+        } catch (IOException e) {
             Logger.log("[CleanupTask] Failed to delete: " + filePath);
         }
     }
@@ -32,5 +33,5 @@ public class DeleteTask extends Task {
         // TODO Auto-generated method stub
         deleteFile();
     }
-    
+
 }
