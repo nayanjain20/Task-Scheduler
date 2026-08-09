@@ -3,6 +3,7 @@ package com.nayan.scheduler.core.model;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.UUID;
 
 import com.nayan.scheduler.core.util.Logger;
 
@@ -11,7 +12,16 @@ public class DeleteTask extends Task {
     String filePath;
 
     public DeleteTask(String taskName, String filePath) {
-        super(taskName, TaskStatus.ACTIVE);
+        super(taskName, TaskStatus.ACTIVE, TaskType.DELETE);
+        this.filePath = filePath;
+    }
+
+    public DeleteTask(UUID taskId,
+            String taskName,
+            UUID taskScheduleId,
+            TaskStatus taskStatus,
+            String filePath) {
+        super(taskId, taskName, taskScheduleId, taskStatus, TaskType.DELETE);
         this.filePath = filePath;
     }
 
@@ -30,8 +40,11 @@ public class DeleteTask extends Task {
 
     @Override
     public void execute() {
-        // TODO Auto-generated method stub
         deleteFile();
+    }
+
+    public String getFilePath() {
+        return filePath;
     }
 
 }

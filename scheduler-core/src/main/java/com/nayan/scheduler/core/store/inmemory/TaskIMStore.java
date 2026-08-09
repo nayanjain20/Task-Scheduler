@@ -1,4 +1,4 @@
-package com.nayan.scheduler.cli.store;
+package com.nayan.scheduler.core.store.inmemory;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -27,7 +27,7 @@ public class TaskIMStore implements TaskStore {
 
     @Override
     public List<Task> getAllTasks() {
-        return taskList;
+        return new ArrayList<>(taskMap.values());
     }
 
     @Override
@@ -44,9 +44,15 @@ public class TaskIMStore implements TaskStore {
     @Override
     public boolean updateTask(Task task) {
         taskMap.put(task.getTaskId(), task);
-        taskList = new ArrayList(taskList.stream().filter(t -> (!t.getTaskId().equals(task.getTaskId()))).toList());
-        taskList.add(task);
-        return true;
+
+        for (int i = 0; i < taskList.size(); i++) {
+            if (taskList.get(i).getTaskId().equals(task.getTaskId())) {
+                taskList.set(i, task);
+                return true;
+            }
+        }
+
+        return false;
     }
 
 }

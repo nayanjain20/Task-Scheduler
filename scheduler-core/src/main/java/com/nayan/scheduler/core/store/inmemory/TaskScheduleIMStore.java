@@ -1,4 +1,4 @@
-package com.nayan.scheduler.cli.store;
+package com.nayan.scheduler.core.store.inmemory;
 
 import java.util.HashMap;
 import java.util.Map;

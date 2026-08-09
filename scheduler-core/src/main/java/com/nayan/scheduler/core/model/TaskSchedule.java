@@ -7,14 +7,23 @@ public class TaskSchedule {
     UUID taskScheduleId;
     UUID taskId;
     Instant startTime;
-    Boolean isRecurring;
-    Integer intervalSeconds;
+    boolean recurring;
+    int intervalSeconds;
 
     public TaskSchedule(UUID taskId, Instant startTime, boolean isRecurring, Integer intervalSeconds) {
         this.taskScheduleId = UUID.randomUUID();
         this.taskId = taskId;
         this.startTime = startTime;
-        this.isRecurring = isRecurring;
+        this.recurring = isRecurring;
+        this.intervalSeconds = intervalSeconds;
+    }
+
+    public TaskSchedule(UUID taskScheduleId, UUID taskId, Instant startTime, boolean recurring,
+            int intervalSeconds) {
+        this.taskScheduleId = taskScheduleId;
+        this.taskId = taskId;
+        this.startTime = startTime;
+        this.recurring = recurring;
         this.intervalSeconds = intervalSeconds;
     }
 
@@ -31,7 +40,7 @@ public class TaskSchedule {
     }
 
     public Boolean isRecurring() {
-        return isRecurring;
+        return recurring;
     }
 
     public Integer getIntervalSeconds() {

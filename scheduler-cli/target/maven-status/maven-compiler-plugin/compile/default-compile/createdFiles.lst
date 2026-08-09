@@ -1,6 +1,3 @@
-com\nayan\scheduler\cli\Main.class
-com\nayan\scheduler\cli\store\TaskExecutionIMStore.class
-com\nayan\scheduler\cli\store\TaskIMStore.class
 com\nayan\scheduler\cli\Client.class
 com\nayan\scheduler\cli\SchedulerProcess.class
-com\nayan\scheduler\cli\store\TaskScheduleIMStore.class
+com\nayan\scheduler\cli\Main.class

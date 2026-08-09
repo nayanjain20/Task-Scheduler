@@ -1,4 +1,4 @@
-package com.nayan.scheduler.core.service;
+package com.nayan.scheduler.core.engine;
 
 import java.time.Duration;
 import java.time.Instant;
@@ -15,11 +15,6 @@ import com.nayan.scheduler.core.model.Task;
 import com.nayan.scheduler.core.model.Task.TaskStatus;
 import com.nayan.scheduler.core.util.Logger;
 
-/**
- * Core scheduler that maintains a priority queue of upcoming executions.
- * Wakes up precisely when the next task is due using timed wait().
- * Thread-safe via synchronized methods and wait/notifyAll.
- */
 public class Scheduler {
 
     Instant nextWakeup;
@@ -63,7 +58,7 @@ public class Scheduler {
 
             if (task.getTaskStatus().equals(TaskStatus.ACTIVE)) {
                 executor.addScheduledExecution(execution);
-                TaskExecution nextScheduledExecution = getNextScheduledExecution(execution);
+                TaskExecution nextScheduledExecution = createNextTaskExecution(taskId);
                 if (nextScheduledExecution != null) {
                     addScheduledExecution(nextScheduledExecution);
                 } else {
@@ -86,7 +81,7 @@ public class Scheduler {
 
     public synchronized void waitUntilNextExecution() throws InterruptedException {
         if (scheduledExecutions.size() == 0) {
-            wait();
+            wait(5000);
         } else {
             long diff = Duration.between(Instant.now(), scheduledExecutions.peek().getExecutionTime()).toMillis();
             if (diff > 0) {
@@ -95,18 +90,30 @@ public class Scheduler {
         }
     }
 
-    public TaskExecution getNextScheduledExecution(TaskExecution execution) {
-        UUID taskScheduleId = execution.getTaskScheduleId();
-        TaskSchedule taskSchedule = taskScheduleStore.getTaskSchedule(taskScheduleId);
+    public TaskExecution createInitialTaskExecution(UUID taskID) {
+        return createTaskExecution(taskID, false);
+    }
 
-        if (!taskSchedule.isRecurring()) {
-            return null;
+    public TaskExecution createNextTaskExecution(UUID taskID) {
+        return createTaskExecution(taskID, true);
+    }
+
+    public TaskExecution createTaskExecution(UUID taskId, boolean next) {
+
+        Task task = taskStore.getTask(taskId);
+        if (task != null) {
+            TaskSchedule taskSchedule = taskScheduleStore.getTaskSchedule(task.getTaskScheduleId());
+            if (taskSchedule != null) {
+                if (next && !taskSchedule.isRecurring()) {
+                    return null;
+                }
+                Instant executionTime = Instant.now().plusSeconds(taskSchedule.getIntervalSeconds());
+                TaskExecution taskExecution = new TaskExecution(taskId, task.getTaskScheduleId(), executionTime);
+                return taskExecution;
+            }
         }
 
-        Instant executionTime = execution.getExecutionTime();
-
-        Instant nextExecutionTime = executionTime.plusSeconds(taskSchedule.getIntervalSeconds());
-        return new TaskExecution(execution.getTaskId(), taskScheduleId, nextExecutionTime);
+        return null;
     }
 
 }

@@ -11,15 +11,36 @@ public abstract class Task {
     final String taskName;
     TaskStatus taskStatus;
     UUID taskScheduleId;
+    TaskType taskType;
 
     public enum TaskStatus {
-        ACTIVE, DEACTIVE, PAUSE, COMPLETED
+        ACTIVE, CANCEL, PAUSE, COMPLETED
     }
 
-    public Task(String taskName, TaskStatus taskStatus) {
+    public enum TaskType {
+        PRINT,
+        WRITE,
+        DELETE
+    }
+
+    public Task(String taskName, TaskStatus taskStatus, TaskType taskType) {
         this.taskId = UUID.randomUUID();
         this.taskName = taskName;
         this.taskStatus = taskStatus;
+        this.taskType = taskType;
+    }
+
+    public Task(UUID taskId,
+            String taskName,
+            UUID taskScheduleId,
+            TaskStatus taskStatus,
+            TaskType taskType) {
+
+        this.taskId = taskId;
+        this.taskName = taskName;
+        this.taskScheduleId = taskScheduleId;
+        this.taskStatus = taskStatus;
+        this.taskType = taskType;
     }
 
     public UUID getTaskId() {
@@ -44,6 +65,10 @@ public abstract class Task {
 
     public UUID getTaskScheduleId() {
         return taskScheduleId;
+    }
+
+    public TaskType getTaskType() {
+        return this.taskType;
     }
 
     public abstract void execute();

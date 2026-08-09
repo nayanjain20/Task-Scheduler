@@ -4,11 +4,11 @@ A learning project that implements a multi-threaded task scheduler in Java. It s
 
 ## Modules
 
-| Module           | Responsibility                                                                          |
-| ---------------- | --------------------------------------------------------------------------------------- |
-| `scheduler-core` | Domain models, scheduling logic, worker execution, and persistence interfaces           |
-| `scheduler-cli`  | Interactive terminal client and in-memory implementations of the persistence interfaces |
-| `scheduler-api`  | Spring Boot HTTP entry point and request/response DTOs                                  |
+| Module           | Responsibility                                                                         |
+| ---------------- | -------------------------------------------------------------------------------------- |
+| `scheduler-core` | Domain models, scheduling engine, shared application service, and persistence adapters |
+| `scheduler-cli`  | Interactive terminal client built on the shared scheduler service                      |
+| `scheduler-api`  | Spring Boot API for creating tasks and reading task and execution state                |
 
 Each module has its own README with its internal structure and behavior.
 
@@ -18,12 +18,18 @@ Each module has its own README with its internal structure and behavior.
 flowchart LR
     CLI[scheduler-cli] --> Core[scheduler-core]
     API[scheduler-api] --> Core
-    CLI --> Memory[(In-memory stores)]
+    CLI --> Service[TaskSchedulerService]
+    API --> Service
+    CLI --> Memory[(Collection stores)]
+    API --> JPA[Spring Data JPA stores]
+    JPA --> H2[(H2 database)]
+    Service --> Engine[Scheduler and Executor]
     Core --> Ports[Store interfaces]
     Memory -. implements .-> Ports
+    JPA -. implements .-> Ports
 ```
 
-The core module does not choose a database or storage technology. Applications create implementations of `TaskStore`, `TaskScheduleStore`, and `TaskExecutionStore`, then inject them into the scheduler and executor.
+The core module does not choose a database or storage technology. Applications create implementations of `TaskStore`, `TaskScheduleStore`, and `TaskExecutionStore`, then inject them into the scheduler service with the required worker count. The CLI starts 5 workers, while the API starts 10.
 
 ## Execution Flow
 
@@ -38,9 +44,9 @@ The core module does not choose a database or storage technology. Applications c
 
 ```text
 task-scheduler/
-|-- scheduler-core/   # Scheduling engine and storage contracts
-|-- scheduler-cli/    # CLI application and in-memory stores
-|-- scheduler-api/    # Spring Boot API scaffold
+|-- scheduler-core/   # Engine, shared service, storage contracts, and in-memory stores
+|-- scheduler-cli/    # Interactive CLI application
+|-- scheduler-api/    # Spring Boot API and composition configuration
 `-- pom.xml            # Parent Maven reactor
 ```
 
@@ -57,8 +63,10 @@ Build and test all modules from the repository root:
 mvn clean test
 ```
 
-The project currently has no automated test sources, so this command validates dependency resolution and compilation for all modules.
+The API module includes an H2-backed Spring end-to-end test that exercises task creation, queries, state transitions, execution persistence, and task subtype payloads.
 
 ## Current Status
 
-The CLI is the complete runnable composition of the scheduler. The API currently contains the Spring Boot entry point, health endpoint, task DTOs, and a placeholder task endpoint. It still needs store implementations and Spring configuration for the core services before it can run the scheduling flow independently.
+Both the CLI and API compose the same core scheduling service. The CLI uses collection-backed stores, while the API uses Spring Data JPA with H2. The configured H2 database is in-memory, so API data is reset when the process restarts; the JPA adapters can also be used with a durable database configuration.
+
+WRITE and DELETE tasks operate directly on their configured file paths. They do not coordinate access with a shared file lock, so concurrently scheduled operations on the same path have nondeterministic ordering. Their current implementations also handle I/O exceptions internally, which means an execution can be recorded as completed even when its file operation fails.

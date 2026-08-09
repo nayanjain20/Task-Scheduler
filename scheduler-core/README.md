@@ -7,9 +7,10 @@
 ```text
 com.nayan.scheduler.core
 |-- factory/   # Creates concrete task types
+|-- engine/    # Scheduler, executor, and workers
 |-- model/     # Tasks, schedules, and execution records
-|-- service/   # Scheduler, executor, and workers
-|-- store/     # Persistence contracts implemented by an outer module
+|-- service/   # Shared task scheduling use cases
+|-- store/     # Persistence contracts and in-memory implementations
 `-- util/      # Console logging helper
 ```
 
@@ -56,9 +57,15 @@ When an execution becomes due:
 
 ## Worker Pool
 
-`Executor` starts a fixed number of `Worker` threads. All workers share one synchronized FIFO queue. A worker waits while the queue is empty, removes an execution when notified, loads the associated task, executes it, and updates the execution record.
+`Executor` starts the number of `Worker` threads supplied to `TaskSchedulerService`. All workers share one synchronized FIFO queue. A worker waits while the queue is empty, removes an execution when notified, loads the associated task, executes it, and updates the execution record.
 
 The worker threads are daemon threads. They do not keep the JVM alive after all normal application threads have ended.
+
+## Application Service
+
+`TaskSchedulerService` is the shared entry point used by the CLI and API. It creates and starts the engine, stores tasks and schedules, and exposes operations to create, cancel, pause, resume, and query tasks. Keeping these use cases in core prevents each application module from rebuilding the orchestration flow.
+
+Pause and cancel update the task state and discard pending execution records. Resume is valid only for a paused task; it reactivates the task and adds a new execution to the scheduler.
 
 ## Persistence Contracts
 
@@ -70,16 +77,19 @@ The `store` package defines three ports:
 | `TaskScheduleStore`  | Start time and recurrence configuration |
 | `TaskExecutionStore` | Individual execution history and status |
 
-The core module only calls these interfaces. An outer module can implement them with in-memory collections, files, JDBC, or another database without changing the scheduling engine.
+The `store.inmemory` package provides collection-backed implementations used by the CLI. The API implements the same contracts with Spring Data JPA. Other applications can provide files, JDBC, or another database without changing the scheduling engine.
 
 ## Using the Core
 
 An application composes the engine in this order:
 
 1. Create implementations of all three store interfaces.
-2. Create an `Executor` with a worker count, task store, and execution store.
-3. Create a `Scheduler` with the executor and all stores.
-4. Run a loop that calls `waitUntilNextExecution()` followed by `processScheduledExecutions()`.
-5. Create tasks, schedules, and initial executions through the application boundary.
+2. Construct `TaskSchedulerService` with those stores and a positive worker count.
+3. Call `startScheduler()` once during application startup.
+4. Use the service to create tasks and manage their state.
 
-The CLI module is the current reference composition.
+The CLI and API modules provide plain Java and Spring examples of this composition. They currently configure 5 and 10 workers, respectively.
+
+## File Task Concurrency
+
+`WriteTask` appends through `FileWriter`, while `DeleteTask` calls `Files.deleteIfExists`. These operations use no shared path-level lock, so multiple workers can write and delete the same file concurrently and the final state depends on execution order. Both task types currently catch I/O exceptions inside the task, preventing `Worker` from marking those operations as failed.
