@@ -81,4 +81,16 @@ public class SchedulerApiService {
     public List<TaskExecution> getTaskExecutions(UUID taskId) {
         return taskSchedulerService.getAllTaskExecutionsForTask(taskId);
     }
+
+    public boolean pauseTask(UUID taskId) {
+        return taskSchedulerService.pauseTask(taskId);
+    }
+
+    public boolean resumeTask(UUID taskId) {
+        return taskSchedulerService.resumeTask(taskId);
+    }
+
+    public boolean cancelTask(UUID taskId) {
+        return taskSchedulerService.cancelTask(taskId);
+    }
 }

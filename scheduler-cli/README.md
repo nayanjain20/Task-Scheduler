@@ -12,9 +12,9 @@
 
 It injects those stores into `TaskSchedulerService`, starts the scheduler, and passes the service to the interactive `Client`.
 
-| Thread           | Purpose                                               |
-| ---------------- | ----------------------------------------------------- |
-| Client thread    | Reads menu input and calls the shared service          |
+| Thread           | Purpose                                                 |
+| ---------------- | ------------------------------------------------------- |
+| Client thread    | Reads menu input and calls the shared service           |
 | Scheduler thread | Waits for due executions and dispatches them to workers |
 
 The scheduler thread is a daemon. Selecting **Exit** ends the client thread, after which the JVM can stop the scheduler and worker daemon threads.
@@ -52,7 +52,7 @@ The scheduler records the execution immediately, even though a worker does not r
 
 - **Cancel** marks the task `CANCEL`. Pending execution records are discarded.
 - **Pause** marks the task `PAUSE`. Future queued executions are skipped.
-- **Resume** schedules a paused task again.
+- **Resume** reactivates a paused task and schedules it again.
 
 The scheduler queue and execution history are not deleted when a task changes state. This keeps the history visible in the list-with-executions view.
 

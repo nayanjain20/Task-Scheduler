@@ -4,8 +4,8 @@ A learning project that implements a multi-threaded task scheduler in Java. It s
 
 ## Modules
 
-| Module           | Responsibility                                                                          |
-| ---------------- | --------------------------------------------------------------------------------------- |
+| Module           | Responsibility                                                                         |
+| ---------------- | -------------------------------------------------------------------------------------- |
 | `scheduler-core` | Domain models, scheduling engine, shared application service, and persistence adapters |
 | `scheduler-cli`  | Interactive terminal client built on the shared scheduler service                      |
 | `scheduler-api`  | Spring Boot API for creating tasks and reading task and execution state                |

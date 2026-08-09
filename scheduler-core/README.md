@@ -65,6 +65,8 @@ The worker threads are daemon threads. They do not keep the JVM alive after all 
 
 `TaskSchedulerService` is the shared entry point used by the CLI and API. It creates and starts the engine, stores tasks and schedules, and exposes operations to create, cancel, pause, resume, and query tasks. Keeping these use cases in core prevents each application module from rebuilding the orchestration flow.
 
+Pause and cancel update the task state and discard pending execution records. Resume is valid only for a paused task; it reactivates the task and adds a new execution to the scheduler.
+
 ## Persistence Contracts
 
 The `store` package defines three ports:

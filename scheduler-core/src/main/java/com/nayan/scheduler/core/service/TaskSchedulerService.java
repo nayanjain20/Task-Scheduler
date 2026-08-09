@@ -76,6 +76,8 @@ public class TaskSchedulerService {
         if (taskSchedule == null) {
             return false;
         }
+        task.setTaskStatus(TaskStatus.ACTIVE);
+        taskStore.updateTask(task);
 
         TaskExecution taskExecution = scheduler.createInitialTaskExecution(task.getTaskId());
         scheduler.addScheduledExecution(taskExecution);

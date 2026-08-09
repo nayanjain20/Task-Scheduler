@@ -14,6 +14,7 @@ import com.nayan.scheduler.core.model.TaskExecution;
 import com.nayan.scheduler.dto.CreateTaskRequest;
 import com.nayan.scheduler.dto.CreateTaskResponse;
 import com.nayan.scheduler.dto.GetAllTasksResponse;
+import com.nayan.scheduler.dto.GetTasksExecutionsResponse;
 import com.nayan.scheduler.service.SchedulerApiService;
 
 @RestController
@@ -42,11 +43,31 @@ public class SchedulerController {
     @GetMapping("/tasks")
     public GetAllTasksResponse getTasks() {
         List<Task> tasks = schedulerApiService.getAllTasks();
-        return new GetAllTasksResponse(tasks);
+        return new GetAllTasksResponse(tasks, sizeOf(tasks));
     }
 
     @GetMapping("/tasks/{taskId}/executions")
-    public List<TaskExecution> getTaskExecutions(@PathVariable(value = "taskId") UUID taskId) {
-        return schedulerApiService.getTaskExecutions(taskId);
+    public GetTasksExecutionsResponse getTaskExecutions(@PathVariable(value = "taskId") UUID taskId) {
+        List<TaskExecution> executions = schedulerApiService.getTaskExecutions(taskId);
+        return new GetTasksExecutionsResponse(executions, sizeOf(executions));
+    }
+
+    @PostMapping("/tasks/{taskId}/pause")
+    public boolean pauseTask(@PathVariable(value = "taskId") UUID taskId) {
+        return schedulerApiService.pauseTask(taskId);
+    }
+
+    @PostMapping("/tasks/{taskId}/resume")
+    public boolean resumeTask(@PathVariable(value = "taskId") UUID taskId) {
+        return schedulerApiService.resumeTask(taskId);
+    }
+
+    @PostMapping("/tasks/{taskId}/cancel")
+    public boolean cancelTask(@PathVariable(value = "taskId") UUID taskId) {
+        return schedulerApiService.cancelTask(taskId);
+    }
+
+    private static int sizeOf(List<?> values) {
+        return values == null ? 0 : values.size();
     }
 }
