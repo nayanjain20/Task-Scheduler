@@ -22,11 +22,11 @@ public class TaskSchedulerService {
     private final Thread schedulerThread;
 
     public TaskSchedulerService(TaskStore taskStore, TaskScheduleStore taskScheduleStore,
-            TaskExecutionStore taskExecutionStore) {
+            TaskExecutionStore taskExecutionStore, int workerCount) {
         this.taskStore = taskStore;
         this.taskScheduleStore = taskScheduleStore;
         this.taskExecutionStore = taskExecutionStore;
-        this.executor = new Executor(5, taskStore, taskExecutionStore);
+        this.executor = new Executor(workerCount, taskStore, taskExecutionStore);
         this.scheduler = new Scheduler(executor, taskStore, taskScheduleStore, taskExecutionStore);
         Runnable schedulerRunnable = new SchedulerProcess(scheduler);
         this.schedulerThread = new Thread(schedulerRunnable);
@@ -61,6 +61,7 @@ public class TaskSchedulerService {
         Task task = taskStore.getTask(taskId);
         if (task != null) {
             task.setTaskStatus(taskStatus);
+            taskStore.updateTask(task);
             taskExecutionStore.discardExecutionsForTask(taskId);
             return true;
         }

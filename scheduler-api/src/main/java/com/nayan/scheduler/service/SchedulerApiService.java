@@ -5,15 +5,16 @@ import java.util.List;
 import java.util.UUID;
 
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import com.nayan.scheduler.core.factory.TaskFactory;
 import com.nayan.scheduler.core.model.Task;
+import com.nayan.scheduler.core.model.Task.TaskType;
 import com.nayan.scheduler.core.model.TaskExecution;
 import com.nayan.scheduler.core.model.TaskSchedule;
 import com.nayan.scheduler.core.service.TaskSchedulerService;
 import com.nayan.scheduler.dto.CreateTaskRequest;
 import com.nayan.scheduler.dto.ScheduleRequest;
-import com.nayan.scheduler.dto.TaskType;
 
 @Service
 public class SchedulerApiService {
@@ -24,6 +25,7 @@ public class SchedulerApiService {
         this.taskSchedulerService = taskSchedulerService;
     }
 
+    @Transactional
     public UUID addNewTask(CreateTaskRequest createTaskRequest) {
         Task task = createTask(createTaskRequest);
         if (task == null) {
@@ -82,14 +84,17 @@ public class SchedulerApiService {
         return taskSchedulerService.getAllTaskExecutionsForTask(taskId);
     }
 
+    @Transactional
     public boolean pauseTask(UUID taskId) {
         return taskSchedulerService.pauseTask(taskId);
     }
 
+    @Transactional
     public boolean resumeTask(UUID taskId) {
         return taskSchedulerService.resumeTask(taskId);
     }
 
+    @Transactional
     public boolean cancelTask(UUID taskId) {
         return taskSchedulerService.cancelTask(taskId);
     }

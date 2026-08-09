@@ -8,7 +8,6 @@ import java.util.Map;
 import java.util.UUID;
 
 import com.nayan.scheduler.core.model.TaskExecution;
-import com.nayan.scheduler.core.model.Task.TaskStatus;
 import com.nayan.scheduler.core.model.TaskExecution.ExecutionStatus;
 import com.nayan.scheduler.core.store.TaskExecutionStore;
 

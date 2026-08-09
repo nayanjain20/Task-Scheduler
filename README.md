@@ -20,13 +20,16 @@ flowchart LR
     API[scheduler-api] --> Core
     CLI --> Service[TaskSchedulerService]
     API --> Service
-    Service --> Memory[(In-memory stores)]
+    CLI --> Memory[(Collection stores)]
+    API --> JPA[Spring Data JPA stores]
+    JPA --> H2[(H2 database)]
     Service --> Engine[Scheduler and Executor]
     Core --> Ports[Store interfaces]
     Memory -. implements .-> Ports
+    JPA -. implements .-> Ports
 ```
 
-The core module does not choose a database or storage technology. Applications create implementations of `TaskStore`, `TaskScheduleStore`, and `TaskExecutionStore`, then inject them into the scheduler and executor.
+The core module does not choose a database or storage technology. Applications create implementations of `TaskStore`, `TaskScheduleStore`, and `TaskExecutionStore`, then inject them into the scheduler service with the required worker count. The CLI starts 5 workers, while the API starts 10.
 
 ## Execution Flow
 
@@ -60,8 +63,10 @@ Build and test all modules from the repository root:
 mvn clean test
 ```
 
-The project currently has no automated test sources, so this command validates dependency resolution and compilation for all modules.
+The API module includes an H2-backed Spring end-to-end test that exercises task creation, queries, state transitions, execution persistence, and task subtype payloads.
 
 ## Current Status
 
-Both the CLI and API compose the same core scheduling service. Persistence is currently in memory, so tasks and execution history are reset whenever an application process restarts.
+Both the CLI and API compose the same core scheduling service. The CLI uses collection-backed stores, while the API uses Spring Data JPA with H2. The configured H2 database is in-memory, so API data is reset when the process restarts; the JPA adapters can also be used with a durable database configuration.
+
+WRITE and DELETE tasks operate directly on their configured file paths. They do not coordinate access with a shared file lock, so concurrently scheduled operations on the same path have nondeterministic ordering. Their current implementations also handle I/O exceptions internally, which means an execution can be recorded as completed even when its file operation fails.

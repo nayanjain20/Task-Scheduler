@@ -41,7 +41,7 @@ public class Worker implements Runnable {
                         executionQueue.wait();
                     }
                     execution = executionQueue.poll();
-                    execution.setWorker(this);
+                    execution.setWorkerId(workerId);
                 }
             } catch (InterruptedException e) {
                 Thread.currentThread().interrupt();

@@ -14,7 +14,7 @@ public class EngineConfiguration {
     @Bean
     public TaskSchedulerService taskSchedulerService(TaskStore taskStore, TaskScheduleStore taskScheduleStore,
             TaskExecutionStore taskExecutionStore) {
-        TaskSchedulerService service = new TaskSchedulerService(taskStore, taskScheduleStore, taskExecutionStore);
+        TaskSchedulerService service = new TaskSchedulerService(taskStore, taskScheduleStore, taskExecutionStore, 10);
         service.startScheduler();
         return service;
     }

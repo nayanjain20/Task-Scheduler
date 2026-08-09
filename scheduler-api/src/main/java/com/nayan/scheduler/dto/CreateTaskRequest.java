@@ -1,5 +1,7 @@
 package com.nayan.scheduler.dto;
 
+import com.nayan.scheduler.core.model.Task.TaskType;
+
 import lombok.Getter;
 import lombok.Setter;
 

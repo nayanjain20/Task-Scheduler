@@ -3,8 +3,6 @@ package com.nayan.scheduler.core.model;
 import java.time.Instant;
 import java.util.UUID;
 
-import com.nayan.scheduler.core.engine.Worker;
-
 /**
  * Represents a single scheduled run of a task at a specific time.
  * Tracks its execution status and which worker handled it.
@@ -14,7 +12,7 @@ public class TaskExecution {
     UUID taskId;
     UUID taskScheduleId;
     Instant executionTime;
-    Worker worker;
+    int workerId;
     ExecutionStatus executionStatus;
 
     public enum ExecutionStatus {
@@ -27,6 +25,17 @@ public class TaskExecution {
         this.taskId = taskId;
         this.executionTime = executionTime;
         this.executionStatus = ExecutionStatus.PENDING;
+        this.workerId = -1;
+    }
+
+    public TaskExecution(UUID taskExecutionId, UUID taskId, UUID taskScheduleId, Instant executionTime,
+            int workerId, ExecutionStatus executionStatus) {
+        this.taskExecutionId = taskExecutionId;
+        this.taskId = taskId;
+        this.taskScheduleId = taskScheduleId;
+        this.executionTime = executionTime;
+        this.workerId = workerId;
+        this.executionStatus = executionStatus;
     }
 
     public UUID getTaskExecutionId() {
@@ -45,12 +54,12 @@ public class TaskExecution {
         return taskScheduleId;
     }
 
-    public Worker getWorker() {
-        return worker;
+    public int getWorkerId() {
+        return workerId;
     }
 
-    public void setWorker(Worker worker) {
-        this.worker = worker;
+    public void setWorkerId(int workerId) {
+        this.workerId = workerId;
     }
 
     public ExecutionStatus getExecutionStatus() {

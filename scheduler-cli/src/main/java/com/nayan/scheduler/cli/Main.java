@@ -18,7 +18,7 @@ public class Main {
         TaskScheduleStore taskScheduleStore = new TaskScheduleIMStore();
         TaskExecutionStore taskExecutionStore = new TaskExecutionIMStore();
         TaskSchedulerService taskSchedulerService = new TaskSchedulerService(taskStore, taskScheduleStore,
-                taskExecutionStore);
+            taskExecutionStore, 5);
         taskSchedulerService.startScheduler();
         Client client = new Client(taskSchedulerService);
         client.run();

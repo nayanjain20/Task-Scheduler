@@ -10,7 +10,7 @@
 - `TaskScheduleIMStore`
 - `TaskExecutionIMStore`
 
-It injects those stores into `TaskSchedulerService`, starts the scheduler, and passes the service to the interactive `Client`.
+It injects those stores into `TaskSchedulerService` with a worker count of 5, starts the scheduler, and passes the service to the interactive `Client`.
 
 | Thread           | Purpose                                                 |
 | ---------------- | ------------------------------------------------------- |

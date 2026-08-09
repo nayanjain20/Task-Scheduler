@@ -10,6 +10,7 @@ com.nayan.scheduler
 |-- config/                       # Store and engine composition
 |-- controller/                   # HTTP controller
 |-- dto/                          # API request and response models
+|-- persistence/                  # JPA entities, repositories, mappers, and stores
 `-- service/                      # DTO-to-core mapping
 ```
 
@@ -46,9 +47,19 @@ Task and execution list responses include both the result list and its `count`. 
 
 ## Core Integration
 
-`StoreConfiguration` creates one shared set of in-memory stores. `EngineConfiguration` creates and starts `TaskSchedulerService` with those stores. `SchedulerApiService` is injected with that shared service and maps API DTOs into core `Task` and `TaskSchedule` objects.
+The three JPA store adapters implement the core persistence contracts and are discovered as Spring repositories. `EngineConfiguration` injects those stores into `TaskSchedulerService`, configures 10 worker threads, and starts the scheduler. `SchedulerApiService` maps API DTOs into core `Task` and `TaskSchedule` objects.
 
-Because persistence is in memory, API state is lost when the process stops. A database-backed implementation can replace the store beans without changing the controller or scheduling engine.
+`TaskMapper`, `TaskScheduleMapper`, and `TaskExecutionMapper` keep JPA annotations out of the core domain. Task subtype fields such as write messages and file paths are stored in `TaskEntity` and restored through `TaskFactory`.
+
+## Database
+
+The default datasource is an in-memory H2 database named `schedulerdb`. Hibernate updates the schema at startup, and the H2 console is available at `/h2-console`. Data is lost when the API process stops; change the datasource properties to use a file-backed H2 database or another JPA-supported database for durable storage.
+
+## Tests
+
+`SchedulerApiJpaE2ETest` starts the Spring application with a test H2 database and sends requests through MockMvc. It verifies task, schedule, and execution rows for create, list, pause, resume, and cancel flows, including WRITE and DELETE payload persistence.
+
+Manual HTTP testing can use the same flows against the running API. Recurring tasks create a new execution after each interval until they are paused or cancelled; cancelling marks pending execution records as discarded.
 
 ## Build
 
@@ -56,6 +67,12 @@ Compile the API and its core dependency from the repository root:
 
 ```bash
 mvn -pl scheduler-api -am package
+```
+
+Run the API persistence tests with:
+
+```bash
+mvn -pl scheduler-api -am test
 ```
 
 The VS Code launch configuration named `SchedulerApiApplication` starts the API from the editor.

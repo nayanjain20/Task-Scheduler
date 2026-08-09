@@ -5,7 +5,6 @@ import java.util.List;
 import java.util.Scanner;
 import java.util.UUID;
 
-import com.nayan.scheduler.core.engine.Worker;
 import com.nayan.scheduler.core.factory.TaskFactory;
 import com.nayan.scheduler.core.model.TaskExecution;
 import com.nayan.scheduler.core.model.Task;
@@ -242,8 +241,8 @@ public class Client {
         System.out.println("Executions:");
         List<TaskExecution> executions = taskSchedulerService.getAllTaskExecutionsForTask(task.getTaskId());
         for (TaskExecution execution : executions) {
-            Worker worker = execution.getWorker();
-            String workerId = (worker == null) ? "PENDING" : String.valueOf(worker.getWorkerId());
+            int executionWorkerId = execution.getWorkerId();
+            String workerId = executionWorkerId == -1 ? "PENDING" : String.valueOf(executionWorkerId);
 
             System.out.println("  " + execution.getExecutionTime()
                     + " | Worker: " + workerId + " | Status: " + execution.getExecutionStatus());

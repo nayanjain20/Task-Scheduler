@@ -57,7 +57,7 @@ When an execution becomes due:
 
 ## Worker Pool
 
-`Executor` starts a fixed number of `Worker` threads. All workers share one synchronized FIFO queue. A worker waits while the queue is empty, removes an execution when notified, loads the associated task, executes it, and updates the execution record.
+`Executor` starts the number of `Worker` threads supplied to `TaskSchedulerService`. All workers share one synchronized FIFO queue. A worker waits while the queue is empty, removes an execution when notified, loads the associated task, executes it, and updates the execution record.
 
 The worker threads are daemon threads. They do not keep the JVM alive after all normal application threads have ended.
 
@@ -77,15 +77,19 @@ The `store` package defines three ports:
 | `TaskScheduleStore`  | Start time and recurrence configuration |
 | `TaskExecutionStore` | Individual execution history and status |
 
-The `store.inmemory` package provides collection-backed implementations used by the current CLI and API. An outer module can replace them with files, JDBC, or another database without changing the scheduling engine.
+The `store.inmemory` package provides collection-backed implementations used by the CLI. The API implements the same contracts with Spring Data JPA. Other applications can provide files, JDBC, or another database without changing the scheduling engine.
 
 ## Using the Core
 
 An application composes the engine in this order:
 
 1. Create implementations of all three store interfaces.
-2. Construct `TaskSchedulerService` with those stores.
+2. Construct `TaskSchedulerService` with those stores and a positive worker count.
 3. Call `startScheduler()` once during application startup.
 4. Use the service to create tasks and manage their state.
 
-The CLI and API modules provide plain Java and Spring examples of this composition.
+The CLI and API modules provide plain Java and Spring examples of this composition. They currently configure 5 and 10 workers, respectively.
+
+## File Task Concurrency
+
+`WriteTask` appends through `FileWriter`, while `DeleteTask` calls `Files.deleteIfExists`. These operations use no shared path-level lock, so multiple workers can write and delete the same file concurrently and the final state depends on execution order. Both task types currently catch I/O exceptions inside the task, preventing `Worker` from marking those operations as failed.
