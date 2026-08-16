@@ -5,8 +5,12 @@
 # Log files
 *.log
 
+# Temporary files
+temp/
+
 # Java build output
 bin/
+target/
 *.class
 
 # VS Code Java

@@ -1,0 +1,27 @@
+.task-list {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 16px;
+}
+
+.task-card {
+  padding: 16px;
+  margin: 10px;
+  border: 1px solid #ddd;
+  border-radius: 8px;
+}
+
+.task-info {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin: 10px;
+}
+.task-type {
+  display: flex;
+  justify-content: flex-start;
+}
+.task-button {
+  display: flex;
+  justify-content: flex-end;
+}

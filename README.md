@@ -1,14 +1,15 @@
 # Task Scheduler
 
-A learning project that implements a multi-threaded task scheduler in Java. It supports one-time and recurring tasks, a manually managed worker pool, pluggable persistence contracts, an interactive CLI, and an early Spring Boot API.
+A learning project that implements a multi-threaded task scheduler in Java with a React user interface. It supports one-time and recurring tasks, a manually managed worker pool, pluggable persistence contracts, an interactive CLI, and a Spring Boot API.
 
 ## Modules
 
 | Module           | Responsibility                                                                         |
 | ---------------- | -------------------------------------------------------------------------------------- |
-| `scheduler-core` | Domain models, scheduling engine, shared application service, and persistence adapters |
-| `scheduler-cli`  | Interactive terminal client built on the shared scheduler service                      |
-| `scheduler-api`  | Spring Boot API for creating tasks and reading task and execution state                |
+| `backend/scheduler-core`      | Domain models, scheduling engine, shared application service, and persistence adapters |
+| `backend/scheduler-cli`       | Interactive terminal client built on the shared scheduler service                      |
+| `backend/scheduler-api`       | Spring Boot API for creating tasks and reading task and execution state                |
+| `frontend/scheduler-ui`       | React interface for creating tasks and viewing task executions                         |
 
 Each module has its own README with its internal structure and behavior.
 
@@ -44,10 +45,13 @@ The core module does not choose a database or storage technology. Applications c
 
 ```text
 task-scheduler/
-|-- scheduler-core/   # Engine, shared service, storage contracts, and in-memory stores
-|-- scheduler-cli/    # Interactive CLI application
-|-- scheduler-api/    # Spring Boot API and composition configuration
-`-- pom.xml            # Parent Maven reactor
+|-- backend/
+|   |-- scheduler-core/   # Engine, shared service, storage contracts, and in-memory stores
+|   |-- scheduler-cli/    # Interactive CLI application
+|   |-- scheduler-api/    # Spring Boot API and composition configuration
+|   `-- pom.xml           # Parent Maven reactor
+`-- frontend/
+    `-- scheduler-ui/     # React and Vite web application
 ```
 
 ## Build
@@ -56,11 +60,21 @@ Requirements:
 
 - JDK 21
 - Maven 3.9 or newer
+- Node.js 20.19 or newer
 
-Build and test all modules from the repository root:
+Build and test all backend modules:
 
 ```bash
+cd backend
 mvn clean test
+```
+
+Build the frontend:
+
+```bash
+cd frontend/scheduler-ui
+npm install
+npm run build
 ```
 
 The API module includes an H2-backed Spring end-to-end test that exercises task creation, queries, state transitions, execution persistence, and task subtype payloads.
