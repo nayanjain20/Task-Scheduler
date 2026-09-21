@@ -1,20 +1,16 @@
 import TaskCard from "./TaskCard";
+import type { Task, TaskAction } from "../api";
 
-export interface Task {
-  id: string;
-  name: string;
-  type: string;
-  status: string;
-}
 interface TaskListProps {
   tasks: Task[];
+  onActionComplete: (taskId: string, action: TaskAction) => void;
 }
-function TaskList({ tasks }: TaskListProps) {
+function TaskList({ tasks, onActionComplete }: TaskListProps) {
   return (
     <>
       <div className="task-list">
         {tasks.map((task) => (
-          <TaskCard key={task.id} task={task} />
+          <TaskCard key={task.id} task={task} onActionComplete={onActionComplete} />
         ))}
       </div>
     </>

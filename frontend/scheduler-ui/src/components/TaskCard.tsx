@@ -1,62 +1,88 @@
-import { useEffect, useState } from "react";
-import type { Task } from "./TaskList";
+import { useId, useRef, useState } from "react";
+import { errorMessage, performTaskAction, type Task, type TaskAction } from "../api";
+import { formatIst, summarizeExecutions } from "../utils/executions";
 import ExecutionList from "./ExecutionList";
-
-export interface Execution {
-  id: string;
-  time: string;
-  status: string;
-}
-
-interface ExecutionResponse {
-  taskExecutionId: string;
-  executionTime: string;
-  executionStatus: string;
-}
 
 interface TaskCardProps {
   task: Task;
+  onActionComplete: (taskId: string, action: TaskAction) => void;
 }
 
-function TaskCard({ task }: TaskCardProps) {
+function TaskCard({ task, onActionComplete }: TaskCardProps) {
   const [showExecutions, setShowExecutions] = useState(false);
-  const [executions, setExecutions] = useState<Execution[]>([]);
+  const [pendingAction, setPendingAction] = useState<TaskAction | null>(null);
+  const [actionError, setActionError] = useState<string | null>(null);
+  const [actionMessage, setActionMessage] = useState<string | null>(null);
+  const actionInFlight = useRef(false);
+  const historyId = useId();
+  const headingId = useId();
+  const summary = task.executions === null ? null : summarizeExecutions(task.executions);
 
-  useEffect(() => {
-    if (!showExecutions) {
+  async function handleAction(action: TaskAction) {
+    if (actionInFlight.current) return;
+    if (action === "cancel" &&
+        !window.confirm(`Cancel "${task.name}"? Pending executions will be discarded. This cannot be resumed.`)) {
       return;
     }
-
-    fetch(`http://localhost:8080/tasks/${task.id}/executions`)
-      .then((response) => response.json())
-      .then((data: { executions?: ExecutionResponse[] }) => {
-        setExecutions(
-          data.executions?.map((execution) => ({
-            id: execution.taskExecutionId,
-            time: execution.executionTime,
-            status: execution.executionStatus,
-          })) ?? [],
-        );
-      })
-      .catch((error) => console.error("Failed to load executions", error));
-  }, [showExecutions, task.id]);
+    actionInFlight.current = true;
+    setPendingAction(action);
+    setActionError(null);
+    setActionMessage(null);
+    try {
+      await performTaskAction(task.id, action);
+      onActionComplete(task.id, action);
+      setActionMessage({ pause: "Task paused.", resume: "Task resumed.", cancel: "Task cancelled." }[action]);
+    } catch (error) {
+      setActionError(errorMessage(error));
+    } finally {
+      actionInFlight.current = false;
+      setPendingAction(null);
+    }
+  }
 
   return (
-    <div className="task-card">
+    <article className="task-card" aria-labelledby={headingId}>
       <div className="task-info">
-        <div>{task.name}</div>
-        <div>{task.status}</div>
+        <h3 id={headingId}>{task.name}</h3>
+        <span className={`task-status status-${task.status.toLowerCase()}`}>{task.status}</span>
       </div>
-      <div className="task-type">
-        <div>Task type: {task.type}</div>
-      </div>
-      <div className="task-button">
-        <button onClick={() => setShowExecutions((visible) => !visible)}>
-          {showExecutions ? "Hide executions" : "Show executions"}
+      <p>Task type: {task.type}</p>
+      <dl className="execution-summary">
+        <div>
+          <dt>Execution count</dt>
+          <dd>{summary === null ? "Unavailable" : summary.count}</dd>
+        </div>
+        <div>
+          <dt>Last finished run - scheduled time (IST)</dt>
+          <dd>{summary === null ? "Unavailable" : summary.lastRun ? formatIst(summary.lastRun.time) : "Not run yet"}</dd>
+        </div>
+      </dl>
+      <p className="summary-note">
+        Counts completed and failed runs only. Times are scheduled times, not actual start or finish times.
+      </p>
+      {task.executionError && <p className="error-message" role="alert">{task.executionError}</p>}
+      <div className="task-actions" aria-label={`Actions for ${task.name}`}>
+        <button disabled={pendingAction !== null || task.status !== "ACTIVE"} onClick={() => void handleAction("pause")}>
+          {pendingAction === "pause" ? "Pausing..." : "Pause"}
+        </button>
+        <button disabled={pendingAction !== null || task.status !== "PAUSE"} onClick={() => void handleAction("resume")}>
+          {pendingAction === "resume" ? "Resuming..." : "Resume"}
+        </button>
+        <button className="cancel-button" disabled={pendingAction !== null || !["ACTIVE", "PAUSE"].includes(task.status)} onClick={() => void handleAction("cancel")}>
+          {pendingAction === "cancel" ? "Cancelling..." : "Cancel"}
         </button>
       </div>
-      {showExecutions && <ExecutionList executions={executions} />}
-    </div>
+      <p className="summary-note">Pause and cancel do not interrupt a run already in progress.</p>
+      {actionError && <p className="error-message" role="alert">{actionError}</p>}
+      {actionMessage && <p role="status">{actionMessage}</p>}
+      <button className="history-button" aria-expanded={showExecutions} aria-controls={historyId}
+        onClick={() => setShowExecutions((visible) => !visible)}>
+        {showExecutions ? "Hide executions" : "Show executions"}
+      </button>
+      <div id={historyId} hidden={!showExecutions}>
+        {showExecutions && task.executions !== null && <ExecutionList executions={task.executions} />}
+      </div>
+    </article>
   );
 }
 

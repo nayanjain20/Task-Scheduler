@@ -1,50 +1,76 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import "./App.css";
-import TaskList, { type Task } from "./components/TaskList";
+import TaskList from "./components/TaskList";
 import CreateTask from "./components/CreateTask";
-
-interface TaskResponseItem {
-  taskId: string;
-  taskName: string;
-  taskType: string;
-  taskStatus: string;
-}
-
-interface TasksResponse {
-  tasks?: TaskResponseItem[];
-  count: number;
-}
+import { errorMessage, loadTasks, type Task, type TaskAction } from "./api";
 
 function App() {
   const [tasks, setTasks] = useState<Task[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const requestVersion = useRef(0);
 
-  useEffect(() => {
-    refreshTasks();
+  const refreshTasks = useCallback(async () => {
+    const version = ++requestVersion.current;
+    try {
+      const tasks = await loadTasks();
+      if (version === requestVersion.current) {
+        setTasks(tasks);
+        setError(null);
+      }
+    } catch (error) {
+      if (version === requestVersion.current) {
+        setError(`Could not refresh tasks. Displayed data may be out of date. ${errorMessage(error)}`);
+      }
+    } finally {
+      if (version === requestVersion.current) {
+        setLoading(false);
+      }
+    }
   }, []);
 
-  function refreshTasks() {
-    fetch("http://localhost:8080/tasks")
-      .then((response) => response.json())
-      .then((data: TasksResponse) => {
-        setTasks(
-          data.tasks?.map((task) => ({
-            id: task.taskId,
-            name: task.taskName,
-            type: task.taskType,
-            status: task.taskStatus,
-          })) ?? [],
-        );
-      })
-      .catch((error) => {
-        console.error("Failed to load tasks", error);
-      });
+  useEffect(() => {
+    const requests = requestVersion;
+    let stopped = false;
+    let timer: ReturnType<typeof setTimeout>;
+    async function poll() {
+      await refreshTasks();
+      if (!stopped) {
+        timer = setTimeout(poll, 5000);
+      }
+    }
+    void poll();
+    return () => {
+      stopped = true;
+      clearTimeout(timer);
+      ++requests.current;
+    };
+  }, [refreshTasks]);
+
+  function onActionComplete(taskId: string, action: TaskAction) {
+    ++requestVersion.current;
+    const status = { pause: "PAUSE", resume: "ACTIVE", cancel: "CANCEL" }[action];
+    setTasks((tasks) => tasks.map((task) =>
+      task.id === taskId ? { ...task, status } : task,
+    ));
+    void refreshTasks();
   }
 
   return (
     <>
       <h1>Task scheduler</h1>
       <CreateTask refreshTasks={refreshTasks} />
-      <TaskList tasks={tasks} />
+      <section className="tasks-section" aria-label="Tasks">
+        <div className="tasks-toolbar">
+          <h2>Your tasks</h2>
+          <button onClick={() => void refreshTasks()}>Refresh</button>
+        </div>
+        <p className="summary-note">Refreshes every 5 seconds. All execution times are in India Standard Time (IST).</p>
+        {error && <p className="error-message" role="alert">{error}</p>}
+        {loading && <p role="status">Loading tasks...</p>}
+        {!loading && !error && tasks.length === 0 && <p>No tasks yet. Create one above.</p>}
+        <TaskList tasks={tasks} onActionComplete={onActionComplete} />
+      </section>
     </>
   );
 }
