@@ -1,7 +1,5 @@
 package com.nayan.scheduler.cli;
 
-import com.nayan.scheduler.core.engine.Executor;
-import com.nayan.scheduler.core.engine.Scheduler;
 import com.nayan.scheduler.core.service.TaskSchedulerService;
 import com.nayan.scheduler.core.store.TaskExecutionStore;
 import com.nayan.scheduler.core.store.TaskScheduleStore;

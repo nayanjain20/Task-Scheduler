@@ -9,6 +9,7 @@ import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
 import jakarta.persistence.Id;
+import jakarta.persistence.Index;
 import jakarta.persistence.Table;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
@@ -20,7 +21,8 @@ import lombok.Setter;
 @AllArgsConstructor
 @NoArgsConstructor
 @Entity
-@Table(name = "task_executions")
+@Table(name = "task_executions", indexes = @Index(name = "idx_task_executions_due",
+        columnList = "execution_status,execution_time"))
 public class TaskExecutionEntity {
     @Id
     private UUID taskExecutionId;
@@ -30,5 +32,6 @@ public class TaskExecutionEntity {
     private Integer workerId;
     @Enumerated(EnumType.STRING)
     private ExecutionStatus executionStatus;
+    private Instant updatedAt;
 
 }

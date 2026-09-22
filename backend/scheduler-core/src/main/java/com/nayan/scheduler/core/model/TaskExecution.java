@@ -14,9 +14,10 @@ public class TaskExecution {
     Instant executionTime;
     int workerId;
     ExecutionStatus executionStatus;
+    Instant updatedAt;
 
     public enum ExecutionStatus {
-        COMPLETED, SKIPPED, PENDING, DISCARDED, FAILED
+        COMPLETED, SKIPPED, PENDING, DISCARDED, FAILED, ASSIGNED, IN_QUEUE
     };
 
     public TaskExecution(UUID taskId, UUID taskScheduleId, Instant executionTime) {
@@ -56,6 +57,14 @@ public class TaskExecution {
 
     public int getWorkerId() {
         return workerId;
+    }
+
+    public Instant getUpdatedAt() {
+        return updatedAt;
+    }
+
+    public void setUpdatedAt(Instant updatedAt) {
+        this.updatedAt = updatedAt;
     }
 
     public void setWorkerId(int workerId) {

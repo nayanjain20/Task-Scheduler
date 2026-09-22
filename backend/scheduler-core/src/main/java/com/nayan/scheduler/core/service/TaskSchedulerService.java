@@ -5,6 +5,7 @@ import java.util.UUID;
 
 import com.nayan.scheduler.core.engine.Executor;
 import com.nayan.scheduler.core.engine.Scheduler;
+import com.nayan.scheduler.core.engine.TaskExecutionPlanner;
 import com.nayan.scheduler.core.model.Task;
 import com.nayan.scheduler.core.model.TaskSchedule;
 import com.nayan.scheduler.core.model.Task.TaskStatus;
@@ -12,6 +13,7 @@ import com.nayan.scheduler.core.model.TaskExecution;
 import com.nayan.scheduler.core.store.TaskExecutionStore;
 import com.nayan.scheduler.core.store.TaskScheduleStore;
 import com.nayan.scheduler.core.store.TaskStore;
+import com.nayan.scheduler.core.util.Logger;
 
 public class TaskSchedulerService {
     private final TaskStore taskStore;
@@ -20,19 +22,24 @@ public class TaskSchedulerService {
     private final Scheduler scheduler;
     private final Executor executor;
     private final Thread schedulerThread;
+    private final TaskExecutionPlanner planner;
 
     public TaskSchedulerService(TaskStore taskStore, TaskScheduleStore taskScheduleStore,
             TaskExecutionStore taskExecutionStore, int workerCount) {
         this.taskStore = taskStore;
         this.taskScheduleStore = taskScheduleStore;
         this.taskExecutionStore = taskExecutionStore;
-        this.executor = new Executor(workerCount, taskStore, taskExecutionStore);
-        this.scheduler = new Scheduler(executor, taskStore, taskScheduleStore, taskExecutionStore);
+        this.planner = new TaskExecutionPlanner(taskStore, taskScheduleStore);
+        this.executor = new Executor(workerCount, taskStore, taskScheduleStore, taskExecutionStore);
+        this.scheduler = new Scheduler(executor, taskExecutionStore);
         Runnable schedulerRunnable = new SchedulerProcess(scheduler);
         this.schedulerThread = new Thread(schedulerRunnable);
     }
 
-    public void startScheduler() {
+    public synchronized void startScheduler() {
+        if (schedulerThread.getState() != Thread.State.NEW) {
+            throw new IllegalStateException("Scheduler has already been started.");
+        }
         schedulerThread.setDaemon(true);
         schedulerThread.start();
     }
@@ -44,8 +51,8 @@ public class TaskSchedulerService {
 
         taskStore.addTask(task);
         taskScheduleStore.addTaskSchedule(taskSchedule);
-        TaskExecution taskExecution = scheduler.createInitialTaskExecution(task.getTaskId());
-        scheduler.addScheduledExecution(taskExecution);
+        TaskExecution taskExecution = planner.createInitialTaskExecution(task.getTaskId());
+        taskExecutionStore.addTaskExecution(taskExecution);
         return true;
     }
 
@@ -80,8 +87,8 @@ public class TaskSchedulerService {
         task.setTaskStatus(TaskStatus.ACTIVE);
         taskStore.updateTask(task);
 
-        TaskExecution taskExecution = scheduler.createInitialTaskExecution(task.getTaskId());
-        scheduler.addScheduledExecution(taskExecution);
+        TaskExecution taskExecution = planner.createInitialTaskExecution(task.getTaskId());
+        taskExecutionStore.addTaskExecution(taskExecution);
         return true;
 
     }
@@ -97,10 +104,12 @@ public class TaskSchedulerService {
     public List<TaskExecution> getAllTaskExecutionsForTask(UUID taskId) {
         return taskExecutionStore.getTaskExecutionsForTask(taskId);
     }
+
 }
 
 class SchedulerProcess implements Runnable {
-    Scheduler scheduler;
+    static final long POLL_INTERVAL_MILLIS = 1000;
+    private final Scheduler scheduler;
 
     SchedulerProcess(Scheduler scheduler) {
         this.scheduler = scheduler;
@@ -108,15 +117,20 @@ class SchedulerProcess implements Runnable {
 
     @Override
     public void run() {
-        System.out.println("Scheduler started\n");
-        while (true) {
-            // System.out.println("In Loop");
+        Logger.log("[SCHEDULER] Polling execution store every second");
+        while (!Thread.currentThread().isInterrupted()) {
+            long started = System.nanoTime();
             try {
-                scheduler.waitUntilNextExecution();
                 scheduler.processScheduledExecutions();
+            } catch (RuntimeException e) {
+                Logger.log("[SCHEDULER] Poll failed: " + e);
+            }
+            try {
+                long elapsedMillis = (System.nanoTime() - started) / 1_000_000;
+                Thread.sleep(Math.max(1, POLL_INTERVAL_MILLIS - elapsedMillis));
             } catch (InterruptedException e) {
                 Thread.currentThread().interrupt();
-                System.out.println("[SCHEDULER] Interrupted: " + e.getMessage());
+                return;
             }
         }
     }

@@ -15,17 +15,20 @@ public final class TaskExecutionMapper {
                 execution.getTaskScheduleId(),
                 execution.getExecutionTime(),
                 execution.getWorkerId(),
-                execution.getExecutionStatus());
+                execution.getExecutionStatus(),
+                execution.getUpdatedAt());
     }
 
     public static TaskExecution toModel(TaskExecutionEntity entity) {
         int workerId = entity.getWorkerId() == null ? -1 : entity.getWorkerId();
-        return new TaskExecution(
+        TaskExecution execution = new TaskExecution(
                 entity.getTaskExecutionId(),
                 entity.getTaskId(),
                 entity.getTaskScheduleId(),
                 entity.getExecutionTime(),
                 workerId,
                 entity.getExecutionStatus());
+        execution.setUpdatedAt(entity.getUpdatedAt());
+        return execution;
     }
 }

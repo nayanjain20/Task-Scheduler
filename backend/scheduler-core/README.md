@@ -29,35 +29,62 @@ A task and an execution are separate objects. One recurring task keeps one sched
 ```mermaid
 sequenceDiagram
     participant Client
+    participant Service
     participant Scheduler
     participant ExecutionStore
     participant Executor
     participant Worker
     participant TaskStore
 
-    Client->>Scheduler: addScheduledExecution(execution)
-    Scheduler->>ExecutionStore: addTaskExecution(execution)
-    Scheduler->>Scheduler: wait until execution time
-    Scheduler->>Executor: addScheduledExecution(execution)
+    Client->>Service: createTaskAndSchedule(task, schedule)
+    Service->>ExecutionStore: addTaskExecution(PENDING execution)
+    loop Every second
+        Scheduler->>ExecutionStore: claimDueExecutions()
+        ExecutionStore->>ExecutionStore: PENDING before now -> IN_QUEUE
+        ExecutionStore-->>Scheduler: claimed executions, earliest first
+        Scheduler->>Executor: addScheduledExecution(execution)
+    end
     Executor->>Worker: notify an idle worker
+    Worker->>ExecutionStore: IN_QUEUE -> ASSIGNED
     Worker->>TaskStore: getTask(taskId)
     Worker->>Worker: task.execute()
     Worker->>ExecutionStore: updateTaskExecution(execution)
 ```
 
-`Scheduler` uses a `PriorityQueue` ordered by execution time. `waitUntilNextExecution()` performs a timed wait for the earliest item, while `addScheduledExecution()` calls `notifyAll()` so an earlier newly added execution can change that wait.
+`Scheduler` has no queue or next-wakeup calculation. `SchedulerProcess` polls once
+per second (a slow poll can delay subsequent polls). The store owns ordering and
+atomically claims up to 100 executions whose status is PENDING and whose execution time is
+**strictly before** its captured `Instant.now()`. Exactly-now executions wait until
+the next poll. The records are changed to IN_QUEUE before being returned. Any
+remaining due PENDING executions stay available for subsequent polls.
+
+`TaskExecutionIMStore` keeps a priority queue of PENDING records and synchronizes
+claims and mutations. It returns snapshots so callers cannot change stored state
+or corrupt queue ordering without a store update. The JPA adapter uses a single
+H2 update-and-return statement to claim and read the batch; it does not maintain
+a Java priority queue or update executions one by one.
 
 When an execution becomes due:
 
-1. The scheduler loads its task from `TaskStore`.
-2. Active tasks are submitted to `Executor`.
-3. A recurring schedule produces its next `TaskExecution`.
-4. A completed one-time task is marked completed.
-5. Executions for inactive tasks are marked skipped.
+1. The store changes it from PENDING to IN_QUEUE.
+2. The scheduler forwards it to `Executor`.
+3. The executor checks task state; inactive tasks have waiting executions discarded.
+4. `TaskExecutionPlanner` supplies the next recurring occurrence, persisted by the executor.
+5. One-time task status is still marked completed at dispatch, preserving the existing policy.
+6. The worker claims IN_QUEUE as ASSIGNED before running the task.
+
+Execution creation is shared by the service (initial/resumed runs) and executor
+(recurring runs) through `TaskExecutionPlanner`. It retains the existing
+`now + interval` timing policy rather than backfilling missed schedule intervals.
 
 ## Worker Pool
 
-`Executor` starts the number of `Worker` threads supplied to `TaskSchedulerService`. All workers share one synchronized FIFO queue. A worker waits while the queue is empty, removes an execution when notified, loads the associated task, executes it, and updates the execution record.
+`Executor` starts the number of `Worker` threads supplied to `TaskSchedulerService`.
+All workers share one synchronized FIFO queue. A worker removes an execution under
+the queue lock, then claims it in the store outside that lock. Rejected claims
+(for example, a cancelled IN_QUEUE record) are logged and skipped without ending
+the worker. After a successful claim, its local worker ID/status are refreshed
+before completion is saved.
 
 The worker threads are daemon threads. They do not keep the JVM alive after all normal application threads have ended.
 
@@ -65,7 +92,22 @@ The worker threads are daemon threads. They do not keep the JVM alive after all 
 
 `TaskSchedulerService` is the shared entry point used by the CLI and API. It creates and starts the engine, stores tasks and schedules, and exposes operations to create, cancel, pause, resume, and query tasks. Keeping these use cases in core prevents each application module from rebuilding the orchestration flow.
 
-Pause and cancel update the task state and discard pending execution records. Resume is valid only for a paused task; it reactivates the task and adds a new execution to the scheduler.
+Pause and cancel update the task state and discard PENDING and IN_QUEUE execution
+records, not already ASSIGNED work. Resume is valid only for a paused task; it
+reactivates the task and persists a new PENDING execution for the next poll.
+
+## Deferred Recovery
+
+Automatic startup and stale-worker recovery are outside the current scope.
+`startScheduler()` only starts polling PENDING executions. Existing IN_QUEUE and
+ASSIGNED records are not reset to PENDING, including after an application restart.
+
+Store updates and executor enqueueing are not one transaction. A dispatch failure
+is logged, the remaining batch is still attempted, and undelivered IN_QUEUE records
+remain IN_QUEUE without automatic retry. Work interrupted while ASSIGNED is also
+not automatically retried. Persistence preserves those records, but does not
+guarantee delivery after a crash. Ownership, duplicate-execution protection, and
+retry behavior for one-time and recurring tasks need a separate recovery design.
 
 ## Persistence Contracts
 
