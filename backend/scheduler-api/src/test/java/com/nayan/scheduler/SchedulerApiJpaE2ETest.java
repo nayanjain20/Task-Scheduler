@@ -7,6 +7,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import java.util.UUID;
+import java.util.concurrent.TimeUnit;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -108,6 +109,35 @@ class SchedulerApiJpaE2ETest {
         assertThat(taskRepository.findById(taskId).orElseThrow().getTaskStatus()).isEqualTo(TaskStatus.CANCEL);
         assertThat(taskExecutionRepository.findByTaskId(taskId))
                 .allMatch(execution -> execution.getExecutionStatus() == ExecutionStatus.DISCARDED);
+    }
+
+    @Test
+    void pollsAndExecutesPersistedTaskThroughWorker() throws Exception {
+        String response = mockMvc.perform(post("/tasks")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("""
+                        {
+                          "type": "PRINT",
+                          "taskName": "Store polling integration test",
+                          "schedule": { "interval": 1, "recurring": false },
+                          "payload": { "message": "Store polling test execution" }
+                        }
+                        """))
+                .andExpect(status().isOk())
+                .andReturn().getResponse().getContentAsString();
+        UUID taskId = UUID.fromString(objectMapper.readTree(response).get("taskId").asText());
+        long deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(8);
+        while (System.nanoTime() < deadline
+                && taskExecutionRepository.findByTaskId(taskId).stream()
+                        .noneMatch(execution -> execution.getExecutionStatus() == ExecutionStatus.COMPLETED)) {
+            Thread.sleep(50);
+        }
+
+        assertThat(taskExecutionRepository.findByTaskId(taskId)).singleElement().satisfies(execution -> {
+            assertThat(execution.getExecutionStatus()).isEqualTo(ExecutionStatus.COMPLETED);
+            assertThat(execution.getWorkerId()).isGreaterThanOrEqualTo(0);
+            assertThat(execution.getUpdatedAt()).isNotNull();
+        });
     }
 
     @Test

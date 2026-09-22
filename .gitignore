@@ -5,6 +5,12 @@
 # Log files
 *.log
 
+# H2 database files
+*.mv.db
+*.trace.db
+*.lock.db
+*.temp.db
+
 # Temporary files
 temp/
 

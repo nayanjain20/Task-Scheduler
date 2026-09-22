@@ -4,7 +4,10 @@ import java.util.LinkedList;
 import java.util.Queue;
 
 import com.nayan.scheduler.core.model.TaskExecution;
+import com.nayan.scheduler.core.model.Task;
+import com.nayan.scheduler.core.model.Task.TaskStatus;
 import com.nayan.scheduler.core.store.TaskExecutionStore;
+import com.nayan.scheduler.core.store.TaskScheduleStore;
 import com.nayan.scheduler.core.store.TaskStore;
 import com.nayan.scheduler.core.util.Logger;
 
@@ -15,8 +18,15 @@ import com.nayan.scheduler.core.util.Logger;
 public class Executor {
 
     private final Queue<TaskExecution> executionQueue;
+    private final TaskStore taskStore;
+    private final TaskExecutionStore taskExecutionStore;
+    private final TaskExecutionPlanner planner;
 
-    public Executor(int workerCount, TaskStore taskStore, TaskExecutionStore taskExecutionStore) {
+    public Executor(int workerCount, TaskStore taskStore, TaskScheduleStore taskScheduleStore,
+            TaskExecutionStore taskExecutionStore) {
+        this.taskStore = taskStore;
+        this.taskExecutionStore = taskExecutionStore;
+        this.planner = new TaskExecutionPlanner(taskStore, taskScheduleStore);
         this.executionQueue = new LinkedList<>();
         for (int i = 0; i < workerCount; i++) {
             Worker worker = new Worker(executionQueue, i, taskStore, taskExecutionStore);
@@ -28,6 +38,22 @@ public class Executor {
     }
 
     public void addScheduledExecution(TaskExecution scheduledExecution) {
+        Task task = taskStore.getTask(scheduledExecution.getTaskId());
+        if (task == null) {
+            throw new IllegalStateException("Task does not exist: " + scheduledExecution.getTaskId());
+        }
+        if (task.getTaskStatus() != TaskStatus.ACTIVE) {
+            taskExecutionStore.discardExecutionsForTask(task.getTaskId());
+            Logger.log("[EXECUTOR] Not dispatching task: " + task.getTaskId() + " | status: " + task.getTaskStatus());
+            return;
+        }
+        TaskExecution next = planner.createNextTaskExecution(task.getTaskId());
+        if (next != null) {
+            taskExecutionStore.addTaskExecution(next);
+        } else {
+            task.setTaskStatus(TaskStatus.COMPLETED);
+            taskStore.updateTask(task);
+        }
         synchronized (executionQueue) {
             executionQueue.add(scheduledExecution);
             executionQueue.notify();

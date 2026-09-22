@@ -9,7 +9,8 @@
       "name": "SchedulerApiApplication",
       "request": "launch",
       "mainClass": "com.nayan.scheduler.SchedulerApiApplication",
-      "projectName": "scheduler-api"
+      "projectName": "scheduler-api",
+      "cwd": "${workspaceFolder}"
     },
     {
       "type": "java",

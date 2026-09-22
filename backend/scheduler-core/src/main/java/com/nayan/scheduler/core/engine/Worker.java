@@ -1,5 +1,6 @@
 package com.nayan.scheduler.core.engine;
 
+import java.time.Instant;
 import java.util.Queue;
 
 import com.nayan.scheduler.core.model.Task;
@@ -41,13 +42,22 @@ public class Worker implements Runnable {
                         executionQueue.wait();
                     }
                     execution = executionQueue.poll();
-                    execution.setWorkerId(workerId);
                 }
             } catch (InterruptedException e) {
                 Thread.currentThread().interrupt();
                 return;
             }
             if (execution != null) {
+                try {
+                    taskExecutionStore.assignTaskExecutionToWorker(execution.getTaskExecutionId(), workerId);
+                } catch (RuntimeException e) {
+                    Logger.log("[WORKER-" + workerId + "] Could not claim execution "
+                            + execution.getTaskExecutionId() + ": " + e);
+                    continue;
+                }
+                execution.setWorkerId(workerId);
+                execution.setExecutionStatus(ExecutionStatus.ASSIGNED);
+                execution.setUpdatedAt(Instant.now());
 
                 int retry = MAX_RETRY;
                 Task task = taskStore.getTask(execution.getTaskId());
@@ -57,6 +67,8 @@ public class Worker implements Runnable {
                         break;
                     } catch (Exception e) {
                         retry -= 1;
+                        Logger.log("[WORKER-" + workerId + "] Execution failed: " + execution.getTaskExecutionId()
+                                + " | attempts remaining: " + retry + " | " + e);
                     }
                 }
                 if (retry == 0) {
